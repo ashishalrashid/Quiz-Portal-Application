@@ -45,7 +45,7 @@ from datetime import timedelta, date
 
 class Admin(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(), nullable=False) 
+    username = db.Column(db.String(), nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
 
     def set_password(self, password):
@@ -59,9 +59,11 @@ class User(db.Model):
     username = db.Column(db.String(), nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     email = db.Column(db.String(128), nullable=False)
-    full_name = db.Column(db.String(128), nullable=False)  
-    qualification = db.Column(db.String(32), nullable=False) 
-    dob = db.Column(db.Date, nullable=True) 
+    full_name = db.Column(db.String(128), nullable=False)
+    qualification = db.Column(db.String(32), nullable=False)
+    dob = db.Column(db.Date, nullable=True)
+    scores = db.relationship('Scores', backref='user', cascade="all, delete-orphan")
+    user_subjects = db.relationship('User_Subject', backref='user', cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -71,21 +73,26 @@ class User(db.Model):
 
 class Subject(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(), nullable=False)
-    description = db.Column(db.String(), nullable=False)
+    name = db.Column(db.String(), nullable=False, unique=True)
+    description = db.Column(db.String())
+    quizzes = db.relationship('Quiz', backref='subject', cascade="all, delete-orphan")
+    questions = db.relationship('Questions', backref='subject', cascade="all, delete-orphan")
+    user_subjects = db.relationship('User_Subject', backref='subject', cascade="all, delete-orphan")
 
 class Quiz(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False) 
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id', ondelete='CASCADE'), nullable=False)
     start_date = db.Column(db.Date, nullable=True)
-    end_date = db.Column(db.Date, nullable=True)  # Deadline
+    end_date = db.Column(db.Date, nullable=True)
     time_duration = db.Column(db.Interval, nullable=False, default=timedelta(minutes=20))
+    scores = db.relationship('Scores', backref='quiz', cascade="all, delete-orphan")
+    question_quizzes = db.relationship('Question_Quiz', backref='quiz', cascade="all, delete-orphan")
 
 class Scores(db.Model):
-    id = db.Column(db.Integer, primary_key=True) 
-    quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id'), nullable=False)  
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False) 
-    score = db.Column(db.Integer)  
+    id = db.Column(db.Integer, primary_key=True)
+    quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    score = db.Column(db.Integer)
 
 class Questions(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -95,17 +102,18 @@ class Questions(db.Model):
     option3 = db.Column(db.String())
     option4 = db.Column(db.String())
     answer = db.Column(db.Integer, nullable=False)
-    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False) 
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id', ondelete='CASCADE'), nullable=False)
+    question_quizzes = db.relationship('Question_Quiz', backref='question', cascade="all, delete-orphan")
 
-class User_Subject(db.Model): 
-    id = db.Column(db.Integer, primary_key=True)  
-    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False)  
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  
+class User_Subject(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
 
-class Question_Quiz(db.Model): 
-    id = db.Column(db.Integer, primary_key=True)  
-    quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id'), nullable=False) 
-    question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False) 
+class Question_Quiz(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id', ondelete='CASCADE'), nullable=False)
+    question_id = db.Column(db.Integer, db.ForeignKey('questions.id', ondelete='CASCADE'), nullable=False)
 
 
 #milestone 0 completed
@@ -171,11 +179,72 @@ class Signup(Resource):
         db.session.add(new_user)
         db.session.commit()
         return jsonify({'msg': 'User created successfully'})
+    
+class CreateSubject(Resource):
+    @cross_origin()
+    @jwt_required()
+    def post(self):
+        identity = get_jwt_identity()
+        if identity != "admin":
+            return jsonify({"msg": "Only admin can create subjects"}), 403
+        
+        data = request.get_json()
+        name = data.get('name')
+        description = data.get('description', None)
+        if not name:
+            return jsonify({"msg": "Subject name is required"}), 400
+        
+        subject = Subject(name=name, description=description)
+        db.session.add(subject)
+        db.session.commit()
+        return jsonify({
+            "msg": "Subject created successfully",
+            "subject": {"id": subject.id, "name": subject.name, "description": subject.description}
+        }), 201
+
+class EditSubject(Resource):
+    @cross_origin()
+    @jwt_required()
+    def put(self, subject_id):
+        identity = get_jwt_identity()
+        if identity != "admin":
+            return jsonify({"msg": "Only admin can edit subjects"}), 403
+        data = request.get_json()
+        subject = Subject.query.get(subject_id)
+        if not subject:
+            return jsonify({"msg": "Subject not found"}), 404
+        name = data.get('name')
+        description = data.get('description', None)
+        if name:
+            subject.name = name
+        subject.description = description
+        db.session.commit()
+        return jsonify({
+            "msg": "Subject updated successfully",
+            "subject": {"id": subject.id, "name": subject.name, "description": subject.description}
+        }), 200
+
+class DeleteSubject(Resource):
+    @cross_origin()
+    @jwt_required()
+    def delete(self, subject_id):
+        if get_jwt_identity() != "admin":
+            return jsonify({"msg": "Only admin can delete subjects"}), 403
+        subject = Subject.query.get(subject_id)
+        if not subject:
+            return jsonify({"msg": "Subject not found"}), 404
+        db.session.delete(subject)
+        db.session.commit()
+        return jsonify({"msg": "Subject and related entries deleted successfully"}), 20
 
 api.add_resource(Hello, '/hello')
 api.add_resource(LoginResource, '/login')
 api.add_resource(Signup, '/signup')
 api.add_resource(AdminLoginResource, "/adminlogin")
+api.add_resource(CreateSubject,'/createsubject')
+api.add_resource(EditSubject,'/editsubject')
+api.add_resource(DeleteSubject,'/deletesubject')
+
 
 if __name__ == '__main__':
     app.run(debug=True)
