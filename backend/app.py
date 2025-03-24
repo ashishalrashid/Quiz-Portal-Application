@@ -10,14 +10,14 @@ from flask_cors import cross_origin
 import os
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-import os
-from datetime import timedelta
-from flask import Flask
 
-app = Flask(__name__, instance_relative_config=True)
+basedir = os.path.abspath(os.path.dirname(__file__))
+instance_path = os.path.abspath(os.path.join(basedir, "..", "instance"))
+
+app = Flask(__name__, instance_relative_config=True, instance_path=instance_path)
 
 try:
-    os.makedirs(app.instance_path)
+    os.makedirs(app.instance_path, exist_ok=True)
 except OSError:
     pass
 
@@ -27,7 +27,6 @@ app.config.from_mapping(
     JWT_SECRET_KEY='super-secret',
     JWT_ACCESS_TOKEN_EXPIRES=timedelta(days=1)
 )
-
 
 db = SQLAlchemy()
 api=Api(app)
@@ -129,7 +128,6 @@ class Hello(Resource):
         username=get_jwt_identity()
         return jsonify({'msg':"Hello world","username":username})
     
-
 class LoginResource(Resource):
     def post(self):
         data = request.get_json()
@@ -235,14 +233,14 @@ class DeleteSubject(Resource):
             return jsonify({"msg": "Subject not found"}), 404
         db.session.delete(subject)
         db.session.commit()
-        return jsonify({"msg": "Subject and related entries deleted successfully"}), 20
+        return jsonify({"msg": "Subject and related entries deleted successfully"}), 200
 
 api.add_resource(Hello, '/hello')
 api.add_resource(LoginResource, '/login')
 api.add_resource(Signup, '/signup')
-api.add_resource(AdminLoginResource, "/adminlogin")
+api.add_resource(AdminLoginResource, '/adminlogin')
 api.add_resource(CreateSubject,'/createsubject')
-api.add_resource(EditSubject,'/editsubject')
+api.add_resource(EditSubject, '/editsubject/<int:subject_id>')
 api.add_resource(DeleteSubject,'/deletesubject')
 
 

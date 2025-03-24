@@ -2,7 +2,6 @@ import os
 from datetime import date, timedelta
 from app import app, db, Admin, User, Subject, Quiz, Scores, Questions, User_Subject, Question_Quiz
 
-# Ensure the database URI is set to use the instance folder.
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///" + os.path.join(app.instance_path, "db.sqlite3")
 
 with app.app_context():
