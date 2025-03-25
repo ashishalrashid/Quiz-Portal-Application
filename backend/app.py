@@ -235,14 +235,120 @@ class DeleteSubject(Resource):
         db.session.commit()
         return jsonify({"msg": "Subject and related entries deleted successfully"}), 200
 
+class GetSubject(Resource):
+    @cross_origin()
+    @jwt_required()
+    def get(self):
+        subjects = Subject.query.all()
+        subjects_data = [
+            {"id": subject.id, "name": subject.name, "description": subject.description}
+            for subject in subjects
+        ]
+        return jsonify({"subjects": subjects_data}), 200
+########################################################        CRUD FOR SUBJECTS DONE        ###############################################################
+########################################################        CRUD FOR   USERS      ###############################################################
+
+from sqlalchemy import text
+
+class GetUsers(Resource):
+    @jwt_required()
+    def get(self):
+        if get_jwt_identity() != "admin":
+            return jsonify({"msg": "Only admin can view users"}), 403
+
+        users = User.query.all()
+        user_list = [
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "full_name": user.full_name,
+                "qualification": user.qualification,
+                "dob": user.dob.strftime("%Y-%m-%d") if user.dob else None
+            }
+            for user in users
+        ]
+        return jsonify(user_list)
+    
+class EditUser(Resource):
+    @jwt_required()
+    def put(self, user_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+
+        data = request.get_json()
+        if not isinstance(data, dict):
+            return {"msg": "Invalid"}, 400
+
+        user = db.session.execute(
+            db.text("SELECT * FROM user WHERE id = :user_id"),
+            {"user_id": user_id}
+        ).fetchone()
+        if not user:
+            return {"msg": "User 404"}, 404
+
+        username = data.get("username") if data.get("username") is not None else user.username
+        email = data.get("email") if data.get("email") is not None else user.email
+        full_name = data.get("full_name") if data.get("full_name") is not None else user.full_name
+        qualification = data.get("qualification") if data.get("qualification") is not None else user.qualification
+        dob_str = data.get("dob")
+        if dob_str:
+            try:
+                dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
+            except ValueError:
+                return {"msg": "Invalid date format. Use YYYY-MM-DD"}, 400
+        else:
+            dob = user.dob
+
+        db.session.execute(
+            db.text("""
+                UPDATE user
+                SET username = :username, email = :email, full_name = :full_name,
+                    qualification = :qualification, dob = :dob
+                WHERE id = :user_id
+            """),
+            {
+                "username": username,
+                "email": email,
+                "full_name": full_name,
+                "qualification": qualification,
+                "dob": dob,
+                "user_id": user_id
+            }
+        )
+        db.session.commit()
+        return {"msg": "User updated"}, 200
+
+
+class DeleteUser(Resource):
+    @cross_origin()
+    @jwt_required()
+    def delete(self, user_id):
+        if get_jwt_identity() != "admin":
+            return jsonify({"msg": "Only admin can delete users"}), 403
+        
+        sql = text("DELETE FROM user WHERE id = :user_id")
+        result = db.session.execute(sql, {"user_id": user_id})
+
+        if result.rowcount == 0:
+            return jsonify({"msg": "User not found"}), 404
+        
+        db.session.commit()
+        return jsonify({"msg": "User deleted successfully"}), 200
+
+
+
 api.add_resource(Hello, '/hello')
 api.add_resource(LoginResource, '/login')
 api.add_resource(Signup, '/signup')
 api.add_resource(AdminLoginResource, '/adminlogin')
 api.add_resource(CreateSubject,'/createsubject')
 api.add_resource(EditSubject, '/editsubject/<int:subject_id>')
-api.add_resource(DeleteSubject,'/deletesubject')
-
+api.add_resource(DeleteSubject,'/deletesubject/<int:subject_id>')
+api.add_resource(GetSubject, "/getsubjects")
+api.add_resource(GetUsers, "/getusers")
+api.add_resource(EditUser, "/edituser/<int:user_id>")
+api.add_resource(DeleteUser, "/deleteuser/<int:user_id>")
 
 if __name__ == '__main__':
     app.run(debug=True)
