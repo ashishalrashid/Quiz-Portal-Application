@@ -244,7 +244,7 @@ class GetSubject(Resource):
         ]
         return jsonify({"subjects": subjects_data}), 200
 ########################################################        CRUD FOR SUBJECTS DONE        ###############################################################
-########################################################        CRUD FOR   USERS      ###############################################################
+########################################################        CRUD FOR   USERS              ###############################################################
 
 from sqlalchemy import text
 
@@ -317,7 +317,6 @@ class EditUser(Resource):
         db.session.commit()
         return {"msg": "User updated"}, 200
 
-
 class DeleteUser(Resource):
     @cross_origin()
     @jwt_required()
@@ -334,6 +333,85 @@ class DeleteUser(Resource):
         db.session.commit()
         return jsonify({"msg": "User deleted successfully"}), 200
 
+########################################################        CRUD FOR users  DONE        ###############################################################
+########################################################        CRUD FOR   CHAPTER          ###############################################################
+
+class GetChapter(Resource):
+    @jwt_required()
+    def get(self, subject_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+        chapters = db.session.execute(
+            db.text("SELECT * FROM chapter WHERE subject_id = :subject_id"),
+            {"subject_id": subject_id}
+        ).fetchall()
+        if not chapters:
+            return {"msg": "No chapters found"}, 404
+        chapters_list = [dict(ch._mapping) for ch in chapters]
+        return {"chapters": chapters_list}, 200
+
+class CreateChapter(Resource):
+    @jwt_required()
+    def post(self, subject_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+        data = request.get_json()
+        if not isinstance(data, dict):
+            return {"msg": "Invalid data format"}, 400
+        name = data.get("name")
+        description = data.get("description", "")
+        if not name:
+            return {"msg": "Chapter name is required"}, 400
+        db.session.execute(
+            db.text("INSERT INTO chapter (name, description, subject_id) VALUES (:name, :description, :subject_id)"),
+            {"name": name, "description": description, "subject_id": subject_id}
+        )
+        db.session.commit()
+        return {"msg": "Chapter created successfully"}, 201
+
+class EditChapter(Resource):
+    @jwt_required()
+    def put(self, chapter_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+        data = request.get_json()
+        if not isinstance(data, dict):
+            return {"msg": "Invalid data format"}, 400
+        chapter = db.session.execute(
+            db.text("SELECT * FROM chapter WHERE id = :chapter_id"),
+            {"chapter_id": chapter_id}
+        ).fetchone()
+        if not chapter:
+            return {"msg": "Chapter not found"}, 404
+        name = data.get("name", chapter.name)
+        description = data.get("description", chapter.description)
+        db.session.execute(
+            db.text("UPDATE chapter SET name = :name, description = :description WHERE id = :chapter_id"),
+            {"name": name, "description": description, "chapter_id": chapter_id}
+        )
+        db.session.commit()
+        return {"msg": "Chapter updated successfully"}, 200
+
+class DeleteChapter(Resource):
+    @jwt_required()
+    def delete(self, chapter_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+        chapter = db.session.execute(
+            db.text("SELECT * FROM chapter WHERE id = :chapter_id"),
+            {"chapter_id": chapter_id}
+        ).fetchone()
+        if not chapter:
+            return {"msg": "Chapter not found"}, 404
+        db.session.execute(
+            db.text("DELETE FROM chapter WHERE id = :chapter_id"),
+            {"chapter_id": chapter_id}
+        )
+        db.session.commit()
+        return {"msg": "Chapter deleted successfully"}, 200
+
+########################################################        CRUD FOR CHAPTER  DONE        ###############################################################
+########################################################        CRUD FOR   Quiz          ###############################################################
 
 
 api.add_resource(Hello, '/hello')
@@ -347,6 +425,11 @@ api.add_resource(GetSubject, "/getsubjects")
 api.add_resource(GetUsers, "/getusers")
 api.add_resource(EditUser, "/edituser/<int:user_id>")
 api.add_resource(DeleteUser, "/deleteuser/<int:user_id>")
+api.add_resource(GetChapter, "/getchapter/<int:subject_id>")
+api.add_resource(CreateChapter, "/createchapter/<int:subject_id>")
+api.add_resource(EditChapter, "/editchapter/<int:chapter_id>")
+api.add_resource(DeleteChapter, "/deletechapter/<int:chapter_id>")
+
 
 if __name__ == '__main__':
     app.run(debug=True)
