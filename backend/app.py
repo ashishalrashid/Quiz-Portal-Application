@@ -36,20 +36,13 @@ jwt =JWTManager(app)
 db.init_app(app)
 
 #make this intosperate file models.py in the future mabye?
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import timedelta, date
-
-
 
 class Admin(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(), nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
-
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
@@ -63,10 +56,8 @@ class User(db.Model):
     dob = db.Column(db.Date, nullable=True)
     scores = db.relationship('Scores', backref='user', cascade="all, delete-orphan")
     user_subjects = db.relationship('User_Subject', backref='user', cascade="all, delete-orphan")
-
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
-
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
@@ -74,13 +65,20 @@ class Subject(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(), nullable=False, unique=True)
     description = db.Column(db.String())
-    quizzes = db.relationship('Quiz', backref='subject', cascade="all, delete-orphan")
+    chapters = db.relationship('Chapter', backref='subject', cascade="all, delete-orphan")
     questions = db.relationship('Questions', backref='subject', cascade="all, delete-orphan")
     user_subjects = db.relationship('User_Subject', backref='subject', cascade="all, delete-orphan")
 
+class Chapter(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(), nullable=False)
+    description = db.Column(db.String())
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id', ondelete='CASCADE'), nullable=False)
+    quizzes = db.relationship('Quiz', backref='chapter', cascade="all, delete-orphan")
+
 class Quiz(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id', ondelete='CASCADE'), nullable=False)
+    chapter_id = db.Column(db.Integer, db.ForeignKey('chapter.id', ondelete='CASCADE'), nullable=False)
     start_date = db.Column(db.Date, nullable=True)
     end_date = db.Column(db.Date, nullable=True)
     time_duration = db.Column(db.Interval, nullable=False, default=timedelta(minutes=20))
