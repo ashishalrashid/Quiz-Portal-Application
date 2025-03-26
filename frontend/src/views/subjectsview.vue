@@ -18,7 +18,14 @@
               </a>
     </div>
     <div class="subcontainer">
-    <h2>Subjects</h2>
+      <div class="top">
+            <h2>Subjects</h2>
+            <RouterLink :to="`/admindash/createsubject`" 
+                class="all-subjects"
+            >
+                <i class="fas fa-plus-circle"> Add Subject</i>
+            </RouterLink>
+          </div>
     <ul class="subs">
       <li 
         v-for="subject in subjects" 
@@ -157,6 +164,7 @@ html, body, #app {
     justify-content: flex-start;
     margin-left: 10%;
     width: 100%;
+    overflow-y: auto;
 }
 .subs {
     display: flex;

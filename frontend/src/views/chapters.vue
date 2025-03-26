@@ -21,6 +21,12 @@
         <div class="subcontainer">
             <div class="top">
             <h2>Chapters</h2>
+            <RouterLink :to="`/admindash/createchapter/${subjectId}`" 
+                class="all-subjects"
+            >
+                <i class="fas fa-plus-circle"> Add Chapter</i>
+            </RouterLink>
+
         </div>
             <ul class="subs">
                 <li v-for="chapter in chapters" :key="chapter.id" class="sub_item">
@@ -167,6 +173,10 @@ html, body, #app {
     margin-left: 10%;
     width: 100%;
 }
+.top {
+    display: flex;
+    align-items: center;
+}
 .subs {
     display: flex;
     flex-direction: row;
@@ -213,5 +223,26 @@ html, body, #app {
     margin: 10px;
     border: 1px;
     border-radius: 25px;
+}
+.all-subjects {
+  text-decoration: none;
+  color: #fff; 
+  background-color: #003f54; 
+  padding: 10px 15px;
+  border: none;
+  border-radius: 25px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 1em;
+  margin: 50px;
+}
+
+.all-subjects i {
+  margin-left: 8px;
+}
+.all-subjects:hover {
+  background-color: #000000;
+  transform: scale(1.1);
 }
 </style>
