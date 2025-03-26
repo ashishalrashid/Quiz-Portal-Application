@@ -22,6 +22,8 @@ try:
 except OSError:
     pass
 
+CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+
 app.config.from_mapping(
     CORS_HEADERS=['Content-Type', 'Authorization'],
     SQLALCHEMY_DATABASE_URI="sqlite:///" + os.path.join(app.instance_path, "db.sqlite3"),
@@ -31,7 +33,7 @@ app.config.from_mapping(
 
 db = SQLAlchemy()
 api=Api(app)
-CORS(app)
+
 jwt =JWTManager(app)
 
 db.init_app(app)
@@ -151,7 +153,6 @@ class AdminLoginResource(Resource):
         return make_response(response, 401)
     
 class Signup(Resource):
-    @cross_origin()
     def post(self):
         data = request.get_json()
         username = data.get('username')
@@ -175,7 +176,6 @@ class Signup(Resource):
 ########################################################        CRUD FOR   SUB            ###############################################################
 
 class CreateSubject(Resource):
-    @cross_origin()
     @jwt_required()
     def post(self):
         identity = get_jwt_identity()
@@ -197,7 +197,6 @@ class CreateSubject(Resource):
         }), 201
 
 class EditSubject(Resource):
-    @cross_origin()
     @jwt_required()
     def put(self, subject_id):
         identity = get_jwt_identity()
@@ -219,7 +218,6 @@ class EditSubject(Resource):
         }), 200
 
 class DeleteSubject(Resource):
-    @cross_origin()
     @jwt_required()
     def delete(self, subject_id):
         if get_jwt_identity() != "admin":
@@ -232,7 +230,6 @@ class DeleteSubject(Resource):
         return jsonify({"msg": "Subject and related entries deleted successfully"}), 200
 
 class GetSubject(Resource):
-    @cross_origin()
     @jwt_required()
     def get(self):
         subjects = Subject.query.all()

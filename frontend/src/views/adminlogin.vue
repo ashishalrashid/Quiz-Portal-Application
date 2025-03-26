@@ -1,9 +1,9 @@
 <template>
     <h2>Login</h2>
-    <form @submit.prevent="loginUser">
+    <form @submit.prevent="loginAdmin">
         <div>
-            <label for="email">Email</label>
-            <input type="email" id="email" v-model="email" required />
+            <label for="username">Admin Username</label>
+            <input type="text" id="username" v-model="username" required />
         </div>
         <div>
             <label for="password">Password</label>
@@ -15,7 +15,8 @@
     <div>
         <RouterLink to="/">Home</RouterLink> |
         <RouterLink to="/signup">SignUp</RouterLink>
-        <RouterLink to="/adminlogin">Not an User ? Admin Login</RouterLink>
+        <RouterLink to="/login">Not an Admin ? User Login</RouterLink>
+
     </div>
 </template>
 
@@ -24,22 +25,22 @@
 export default{
     data(){
         return{
-            email:"",
+            username:"",
             password:"",
         };
     },
     methods:{
         async loginUser(){
-            if (!this.email || !this.password){
+            if (!this.username || !this.password){
                 alert("All fields requeired");
                 return;
             }
 
             try{
-                const response =await fetch("http://localhost:5000/login",{
+                const response =await fetch("http://localhost:5000/adminlogin",{
                     method:"POST",
                     headers:{"Content-Type":"application/json"},
-                    body:JSON.stringify({email:this.email,password:this.password})
+                    body:JSON.stringify({username:this.username,password:this.password})
                 });
 
                 const res =await response.json();
