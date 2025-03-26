@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_restful import Api, Resource
 from datetime import timedelta
 from flask_cors import cross_origin
+from sqlalchemy import text
 import os
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -246,8 +247,6 @@ class GetSubject(Resource):
 ########################################################        CRUD FOR SUBJECTS DONE        ###############################################################
 ########################################################        CRUD FOR   USERS              ###############################################################
 
-from sqlalchemy import text
-
 class GetUsers(Resource):
     @jwt_required()
     def get(self):
@@ -411,8 +410,212 @@ class DeleteChapter(Resource):
         return {"msg": "Chapter deleted successfully"}, 200
 
 ########################################################        CRUD FOR CHAPTER  DONE        ###############################################################
-########################################################        CRUD FOR   Quiz          ###############################################################
+########################################################           CRUD FOR   Quiz             ###############################################################
 
+class GetQuiz(Resource):
+    @jwt_required()
+    def get(self, subject_id):
+        quizzes = db.session.execute(
+            db.text("""
+                SELECT q.* 
+                FROM quiz q 
+                JOIN chapter c ON q.chapter_id = c.id 
+                WHERE c.subject_id = :subject_id
+            """),
+            {"subject_id": subject_id}
+        ).fetchall()
+        if not quizzes:
+            return {"msg": "No quizzes found"}, 404
+        quizzes_list = [dict(q._mapping) for q in quizzes]
+        return {"quizzes": quizzes_list}, 200
+
+class CreateQuiz(Resource):
+    @jwt_required()
+    def post(self, chapter_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+        data = request.get_json()
+        if not isinstance(data, dict):
+            return {"msg": "Invalid data format"}, 400
+        start_date_str = data.get("start_date")
+        end_date_str = data.get("end_date")
+        time_duration_minutes = data.get("time_duration")
+        try:
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else None
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
+            time_duration = timedelta(minutes=float(time_duration_minutes)) if time_duration_minutes is not None else timedelta(minutes=20)
+        except Exception:
+            return {"msg": "Invalid date or duration format"}, 400
+        db.session.execute(
+            db.text("INSERT INTO quiz (chapter_id, start_date, end_date, time_duration) VALUES (:chapter_id, :start_date, :end_date, :time_duration)"),
+            {"chapter_id": chapter_id, "start_date": start_date, "end_date": end_date, "time_duration": time_duration}
+        )
+        db.session.commit()
+        return {"msg": "Quiz created successfully"}, 201
+
+class EditQuiz(Resource):
+    @jwt_required()
+    def put(self, quiz_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+        data = request.get_json()
+        if not isinstance(data, dict):
+            return {"msg": "Invalid data format"}, 400
+        quiz = db.session.execute(
+            db.text("SELECT * FROM quiz WHERE id = :quiz_id"),
+            {"quiz_id": quiz_id}
+        ).fetchone()
+        if not quiz:
+            return {"msg": "Quiz not found"}, 404
+        chapter_id = data.get("chapter_id", quiz.chapter_id)
+        start_date_str = data.get("start_date")
+        end_date_str = data.get("end_date")
+        time_duration_minutes = data.get("time_duration")
+        try:
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else quiz.start_date
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else quiz.end_date
+            time_duration = timedelta(minutes=float(time_duration_minutes)) if time_duration_minutes is not None else quiz.time_duration
+        except Exception as e:
+            return {"msg": "Invalid date or duration format"}, 400
+        db.session.execute(
+            db.text("""
+                UPDATE quiz
+                SET chapter_id = :chapter_id, start_date = :start_date, end_date = :end_date, time_duration = :time_duration
+                WHERE id = :quiz_id
+            """),
+            {"chapter_id": chapter_id, "start_date": start_date, "end_date": end_date, "time_duration": time_duration, "quiz_id": quiz_id}
+        )
+        db.session.commit()
+        return {"msg": "Quiz updated successfully"}, 200
+
+class DeleteQuiz(Resource):
+    @jwt_required()
+    def delete(self, quiz_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+        quiz = db.session.execute(
+            db.text("SELECT * FROM quiz WHERE id = :quiz_id"),
+            {"quiz_id": quiz_id}
+        ).fetchone()
+        if not quiz:
+            return {"msg": "Quiz not found"}, 404
+        db.session.execute(
+            db.text("DELETE FROM quiz WHERE id = :quiz_id"),
+            {"quiz_id": quiz_id}
+        )
+        db.session.commit()
+        return {"msg": "Quiz deleted successfully"}, 200
+
+########################################################             CRUD FOR QUIZ DONE               ###############################################################
+########################################################            CRUD FOR QUESTIONS                ###############################################################
+
+class CreateQuestion(Resource):
+    @jwt_required()
+    def post(self, quiz_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+
+        data = request.get_json()
+        if not isinstance(data, dict):
+            return {"msg": "Invalid data format"}, 400
+
+        question_text = data.get("question_text")
+        options = data.get("options")
+        correct_option = data.get("correct_option")
+        marks = data.get("marks", 1)
+
+        if not question_text or not options or correct_option not in options:
+            return {"msg": "Invalid question data"}, 400
+
+        db.session.execute(
+            db.text("""
+                INSERT INTO questions (quiz_id, question_text, options, correct_option, marks)
+                VALUES (:quiz_id, :question_text, :options, :correct_option, :marks)
+            """),
+            {
+                "quiz_id": quiz_id,
+                "question_text": question_text,
+                "options": json.dumps(options),
+                "correct_option": correct_option,
+                "marks": marks
+            }
+        )
+        db.session.commit()
+        return {"msg": "Question created successfully"}, 201
+
+
+class ReadQuestions(Resource):
+    @jwt_required()
+    def get(self, quiz_id):
+        questions = db.session.execute(
+            db.text("SELECT * FROM questions WHERE quiz_id = :quiz_id"),
+            {"quiz_id": quiz_id}
+        ).fetchall()
+
+        return [{"id": q.id, "question_text": q.question_text, "options": json.loads(q.options),
+                 "correct_option": q.correct_option, "marks": q.marks} for q in questions], 200
+
+
+class UpdateQuestion(Resource):
+    @jwt_required()
+    def put(self, question_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+
+        data = request.get_json()
+        if not isinstance(data, dict):
+            return {"msg": "Invalid"}, 400
+
+        question = db.session.execute(
+            db.text("SELECT * FROM questions WHERE id = :question_id"),
+            {"question_id": question_id}
+        ).fetchone()
+        if not question:
+            return {"msg": "Question not found"}, 404
+
+        question_text = data.get("question_text", question.question_text)
+        options = data.get("options", json.loads(question.options))
+        correct_option = data.get("correct_option", question.correct_option)
+        marks = data.get("marks", question.marks)
+
+        if correct_option not in options:
+            return {"msg": "Invalid correct option"}, 400
+
+        db.session.execute(
+            db.text("""
+                UPDATE questions
+                SET question_text = :question_text, options = :options,
+                    correct_option = :correct_option, marks = :marks
+                WHERE id = :question_id
+            """),
+            {
+                "question_text": question_text,
+                "options": json.dumps(options),
+                "correct_option": correct_option,
+                "marks": marks,
+                "question_id": question_id
+            }
+        )
+        db.session.commit()
+        return {"msg": "Question updated"}, 200
+
+
+class DeleteQuestion(Resource):
+    @jwt_required()
+    def delete(self, question_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+
+        db.session.execute(
+            db.text("DELETE FROM questions WHERE id = :question_id"),
+            {"question_id": question_id}
+        )
+        db.session.commit()
+        return {"msg": "Question deleted"}, 200
+
+
+########################################################             CRUD  DONE               ###############################################################
+########################################################             RESOURCES                ###############################################################
 
 api.add_resource(Hello, '/hello')
 api.add_resource(LoginResource, '/login')
@@ -429,6 +632,7 @@ api.add_resource(GetChapter, "/getchapter/<int:subject_id>")
 api.add_resource(CreateChapter, "/createchapter/<int:subject_id>")
 api.add_resource(EditChapter, "/editchapter/<int:chapter_id>")
 api.add_resource(DeleteChapter, "/deletechapter/<int:chapter_id>")
+api.add_resource(CreateQuiz,"/createquiz/<int:chapter_id>")
 
 
 if __name__ == '__main__':
