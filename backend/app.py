@@ -124,6 +124,7 @@ with app.app_context():
 
 
 class LoginResource(Resource):
+    @cross_origin(origins="http://localhost:5173")
     def post(self):
         data = request.get_json()
         email = data['email']
@@ -154,6 +155,7 @@ class AdminLoginResource(Resource):
         return make_response(response, 401)
     
 class Signup(Resource):
+    @cross_origin(origins="http://localhost:5173")
     def post(self):
         data = request.get_json()
         username = data.get('username')
@@ -177,6 +179,7 @@ class Signup(Resource):
 ########################################################        CRUD FOR   SUB            ###############################################################
 
 class CreateSubject(Resource):
+    @cross_origin(origins="http://localhost:5173")
     @jwt_required()
     def post(self):
         identity = get_jwt_identity()
@@ -198,6 +201,7 @@ class CreateSubject(Resource):
         }), 201
 
 class EditSubject(Resource):
+    @cross_origin(origins="http://localhost:5173")
     @jwt_required()
     def put(self, subject_id):
         identity = get_jwt_identity()
@@ -219,6 +223,7 @@ class EditSubject(Resource):
         }), 200
 
 class DeleteSubject(Resource):
+    @cross_origin(origins="http://localhost:5173")
     @jwt_required()
     def delete(self, subject_id):
         if get_jwt_identity() != "admin":
@@ -231,6 +236,7 @@ class DeleteSubject(Resource):
         return jsonify({"msg": "Subject and related entries deleted successfully"}), 200
 
 class GetSubject(Resource):
+    @cross_origin(origins="http://localhost:5173")
     @jwt_required()
     def get(self):
         subjects = Subject.query.all()
@@ -243,6 +249,7 @@ class GetSubject(Resource):
 ########################################################        CRUD FOR   USERS              ###############################################################
 
 class GetUsers(Resource):
+    @cross_origin(origins="http://localhost:5173")
     @jwt_required()
     def get(self):
         if get_jwt_identity() != "admin":
@@ -263,6 +270,7 @@ class GetUsers(Resource):
         return jsonify(user_list)
     
 class EditUser(Resource):
+    @cross_origin(origins="http://localhost:5173")
     @jwt_required()
     def put(self, user_id):
         if get_jwt_identity() != "admin":
@@ -312,7 +320,7 @@ class EditUser(Resource):
         return {"msg": "User updated"}, 200
 
 class DeleteUser(Resource):
-    @cross_origin()
+    @cross_origin(origins="http://localhost:5173")
     @jwt_required()
     def delete(self, user_id):
         if get_jwt_identity() != "admin":
@@ -332,6 +340,7 @@ class DeleteUser(Resource):
 
 class GetChapter(Resource):
     @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
     def get(self, subject_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
@@ -345,6 +354,7 @@ class GetChapter(Resource):
         return {"chapters": chapters_list}, 200
 
 class CreateChapter(Resource):
+    @cross_origin(origins="http://localhost:5173")
     @jwt_required()
     def post(self, subject_id):
         if get_jwt_identity() != "admin":
@@ -364,6 +374,7 @@ class CreateChapter(Resource):
         return {"msg": "Chapter created successfully"}, 201
 
 class EditChapter(Resource):
+    @cross_origin(origins="http://localhost:5173")
     @jwt_required()
     def put(self, chapter_id):
         if get_jwt_identity() != "admin":
@@ -387,6 +398,7 @@ class EditChapter(Resource):
         return {"msg": "Chapter updated successfully"}, 200
 
 class DeleteChapter(Resource):
+    @cross_origin(origins="http://localhost:5173")
     @jwt_required()
     def delete(self, chapter_id):
         if get_jwt_identity() != "admin":
@@ -409,6 +421,7 @@ class DeleteChapter(Resource):
 
 class GetQuiz(Resource):
     @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
     def get(self, subject_id):
         quizzes = db.session.execute(
             db.text("""
@@ -426,6 +439,7 @@ class GetQuiz(Resource):
 
 class CreateQuiz(Resource):
     @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
     def post(self, chapter_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
@@ -450,6 +464,7 @@ class CreateQuiz(Resource):
 
 class EditQuiz(Resource):
     @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
     def put(self, quiz_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
@@ -485,6 +500,7 @@ class EditQuiz(Resource):
 
 class DeleteQuiz(Resource):
     @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
     def delete(self, quiz_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
@@ -505,6 +521,7 @@ class DeleteQuiz(Resource):
 ########################################################            CRUD FOR QUESTIONS                ###############################################################
 class EditQuestion(Resource):
     @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
     def put(self, question_id):
         if get_jwt_identity() != "admin":
             return {"msg": "Not authorized"}, 403
@@ -550,6 +567,7 @@ class EditQuestion(Resource):
 
 class DeleteQuestion(Resource):
     @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
     def delete(self, question_id):
         if get_jwt_identity() != "admin":
             return {"msg": "Not authorized"}, 403
@@ -563,6 +581,7 @@ class DeleteQuestion(Resource):
 
 class GetQuestions(Resource):
     @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
     def get(self, quiz_id):
         questions = db.session.execute(
             db.text("""
@@ -582,6 +601,7 @@ class GetQuestions(Resource):
 
 class CreateQuestion(Resource):
     @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
     def post(self, quiz_id):
         if get_jwt_identity() != "admin":
             return {"msg": "Not authorized"}, 403
@@ -626,6 +646,33 @@ class CreateQuestion(Resource):
 
 
 ########################################################             CRUD  DONE               ###############################################################
+########################################################             STATS CALC                ###############################################################
+
+class GetCounts(Resource):
+    @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
+    def get(self):
+        user_result = db.session.execute(text("SELECT COUNT(*) as count FROM user")).fetchone()
+        user_count = user_result[0] if user_result else 0
+
+        quiz_result = db.session.execute(text("SELECT COUNT(*) as count FROM quiz")).fetchone()
+        quiz_count = quiz_result[0] if quiz_result else 0
+
+        subject_result = db.session.execute(text("SELECT COUNT(*) as count FROM subject")).fetchone()
+        subject_count = subject_result[0] if subject_result else 0
+
+        chapter_result = db.session.execute(text("SELECT COUNT(*) as count FROM chapter")).fetchone()
+        chapter_count = chapter_result[0] if chapter_result else 0
+
+        return {
+            "user_count": user_count,
+            "quiz_count": quiz_count,
+            "subject_count": subject_count,
+            "chapter_count": chapter_count
+        }, 200
+
+
+########################################################             STATS DONE               ###############################################################
 ########################################################             RESOURCES                ###############################################################
 
 api.add_resource(LoginResource, '/login')
@@ -647,6 +694,7 @@ api.add_resource(CreateQuestion, "/createquestion/<int:quiz_id>")
 api.add_resource(EditQuestion, "/editquestion/<int:question_id>")
 api.add_resource(DeleteQuestion, "/deletequestion/<int:question_id>")
 api.add_resource(GetQuestions,"/getquestion/<int:quiz_id>")
+api.add_resource(GetCounts,"/getcounts")
 
 
 if __name__ == '__main__':
