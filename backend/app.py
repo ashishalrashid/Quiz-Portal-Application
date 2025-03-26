@@ -120,13 +120,7 @@ class Question_Quiz(db.Model):
 with app.app_context():
     db.create_all()
 
-class Hello(Resource):
-    @cross_origin()
-    @jwt_required()
-    def get(self):
-        username=get_jwt_identity()
-        return jsonify({'msg':"Hello world","username":username})
-    
+
 class LoginResource(Resource):
     def post(self):
         data = request.get_json()
@@ -176,7 +170,10 @@ class Signup(Resource):
         db.session.add(new_user)
         db.session.commit()
         return jsonify({'msg': 'User created successfully'})
-    
+
+########################################################           RBAC DONE              ###############################################################
+########################################################        CRUD FOR   SUB            ###############################################################
+
 class CreateSubject(Resource):
     @cross_origin()
     @jwt_required()
@@ -508,7 +505,7 @@ class DeleteQuiz(Resource):
 
 ########################################################             CRUD FOR QUIZ DONE               ###############################################################
 ########################################################            CRUD FOR QUESTIONS                ###############################################################
-class UpdateQuestion(Resource):
+class EditQuestion(Resource):
     @jwt_required()
     def put(self, question_id):
         if get_jwt_identity() != "admin":
@@ -625,10 +622,14 @@ class CreateQuestion(Resource):
 
         return {"msg": "Question created successfully"}, 201
 
+########################################################             ADMIN DONE               ###############################################################
+##################################         USERS: TAKE QUESTIONS, EVALUATE QUESTIONS, GET SUB CHAPTERS,AND QUIZ            ##############################################
+
+
+
 ########################################################             CRUD  DONE               ###############################################################
 ########################################################             RESOURCES                ###############################################################
 
-api.add_resource(Hello, '/hello')
 api.add_resource(LoginResource, '/login')
 api.add_resource(Signup, '/signup')
 api.add_resource(AdminLoginResource, '/adminlogin')
@@ -644,6 +645,10 @@ api.add_resource(CreateChapter, "/createchapter/<int:subject_id>")
 api.add_resource(EditChapter, "/editchapter/<int:chapter_id>")
 api.add_resource(DeleteChapter, "/deletechapter/<int:chapter_id>")
 api.add_resource(CreateQuiz,"/createquiz/<int:chapter_id>")
+api.add_resource(CreateQuestion, "/createquestion/<int:quiz_id>")
+api.add_resource(EditQuestion, "/editquestion/<int:question_id>")
+api.add_resource(DeleteQuestion, "/deletequestion/<int:question_id>")
+api.add_resource(GetQuestions,"/getquestion/<int:quiz_id>")
 
 
 if __name__ == '__main__':
