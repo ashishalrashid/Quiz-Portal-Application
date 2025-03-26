@@ -412,67 +412,102 @@ class DeleteChapter(Resource):
 ########################################################        CRUD FOR CHAPTER  DONE        ###############################################################
 ########################################################           CRUD FOR   Quiz             ###############################################################
 
-class GetQuestions(Resource):
+class GetQuiz(Resource):
     @jwt_required()
-    def get(self, quiz_id):
-        questions = db.session.execute(
+    def get(self, subject_id):
+        quizzes = db.session.execute(
             db.text("""
-                SELECT q.id, q.question, q.option1, q.option2, q.option3, q.option4, q.answer, q.subject_id
-                FROM questions q
-                JOIN question_quiz qq ON q.id = qq.question_id
-                WHERE qq.quiz_id = :quiz_id
+                SELECT q.* 
+                FROM quiz q 
+                JOIN chapter c ON q.chapter_id = c.id 
+                WHERE c.subject_id = :subject_id
             """),
-            {"quiz_id": quiz_id}
+            {"subject_id": subject_id}
         ).fetchall()
+        if not quizzes:
+            return {"msg": "No quizzes found"}, 404
+        quizzes_list = [dict(q._mapping) for q in quizzes]
+        return {"quizzes": quizzes_list}, 200
 
-        return [{
-            "id": q.id, "question": q.question,
-            "options": [q.option1, q.option2, q.option3, q.option4],
-            "answer": q.answer, "subject_id": q.subject_id
-        } for q in questions], 200
-
-
-class CreateQuestion(Resource):
+class CreateQuiz(Resource):
     @jwt_required()
-    def post(self, quiz_id):
+    def post(self, chapter_id):
         if get_jwt_identity() != "admin":
-            return {"msg": "Not authorized"}, 403
-
+            return {"msg": "not admin"}, 403
         data = request.get_json()
         if not isinstance(data, dict):
             return {"msg": "Invalid data format"}, 400
-
-        question_text = data.get("question")
-        option1 = data.get("option1")
-        option2 = data.get("option2")
-        option3 = data.get("option3")
-        option4 = data.get("option4")
-        answer = data.get("answer")
-        subject_id = data.get("subject_id")
-
-        if not all([question_text, option1, option2, option3, option4, answer, subject_id]):
-            return {"msg": "Missing required fields"}, 400
-
+        start_date_str = data.get("start_date")
+        end_date_str = data.get("end_date")
+        time_duration_minutes = data.get("time_duration")
+        try:
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else None
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
+            time_duration = timedelta(minutes=float(time_duration_minutes)) if time_duration_minutes is not None else timedelta(minutes=20)
+        except Exception:
+            return {"msg": "Invalid date or duration format"}, 400
         db.session.execute(
-            db.text("""
-                INSERT INTO questions (question, option1, option2, option3, option4, answer, subject_id)
-                VALUES (:question, :option1, :option2, :option3, :option4, :answer, :subject_id)
-            """),
-            {
-                "question": question_text,
-                "option1": option1,
-                "option2": option2,
-                "option3": option3,
-                "option4": option4,
-                "answer": answer,
-                "subject_id": subject_id
-            }
+            db.text("INSERT INTO quiz (chapter_id, start_date, end_date, time_duration) VALUES (:chapter_id, :start_date, :end_date, :time_duration)"),
+            {"chapter_id": chapter_id, "start_date": start_date, "end_date": end_date, "time_duration": time_duration}
         )
         db.session.commit()
+        return {"msg": "Quiz created successfully"}, 201
 
-        return {"msg": "Question created successfully"}, 201
+class EditQuiz(Resource):
+    @jwt_required()
+    def put(self, quiz_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+        data = request.get_json()
+        if not isinstance(data, dict):
+            return {"msg": "Invalid data format"}, 400
+        quiz = db.session.execute(
+            db.text("SELECT * FROM quiz WHERE id = :quiz_id"),
+            {"quiz_id": quiz_id}
+        ).fetchone()
+        if not quiz:
+            return {"msg": "Quiz not found"}, 404
+        chapter_id = data.get("chapter_id", quiz.chapter_id)
+        start_date_str = data.get("start_date")
+        end_date_str = data.get("end_date")
+        time_duration_minutes = data.get("time_duration")
+        try:
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else quiz.start_date
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else quiz.end_date
+            time_duration = timedelta(minutes=float(time_duration_minutes)) if time_duration_minutes is not None else quiz.time_duration
+        except Exception as e:
+            return {"msg": "Invalid date or duration format"}, 400
+        db.session.execute(
+            db.text("""
+                UPDATE quiz
+                SET chapter_id = :chapter_id, start_date = :start_date, end_date = :end_date, time_duration = :time_duration
+                WHERE id = :quiz_id
+            """),
+            {"chapter_id": chapter_id, "start_date": start_date, "end_date": end_date, "time_duration": time_duration, "quiz_id": quiz_id}
+        )
+        db.session.commit()
+        return {"msg": "Quiz updated successfully"}, 200
 
+class DeleteQuiz(Resource):
+    @jwt_required()
+    def delete(self, quiz_id):
+        if get_jwt_identity() != "admin":
+            return {"msg": "not admin"}, 403
+        quiz = db.session.execute(
+            db.text("SELECT * FROM quiz WHERE id = :quiz_id"),
+            {"quiz_id": quiz_id}
+        ).fetchone()
+        if not quiz:
+            return {"msg": "Quiz not found"}, 404
+        db.session.execute(
+            db.text("DELETE FROM quiz WHERE id = :quiz_id"),
+            {"quiz_id": quiz_id}
+        )
+        db.session.commit()
+        return {"msg": "Quiz deleted successfully"}, 200
 
+########################################################             CRUD FOR QUIZ DONE               ###############################################################
+########################################################            CRUD FOR QUESTIONS                ###############################################################
 class UpdateQuestion(Resource):
     @jwt_required()
     def put(self, question_id):
@@ -518,7 +553,6 @@ class UpdateQuestion(Resource):
         db.session.commit()
         return {"msg": "Question updated"}, 200
 
-
 class DeleteQuestion(Resource):
     @jwt_required()
     def delete(self, question_id):
@@ -532,113 +566,64 @@ class DeleteQuestion(Resource):
         db.session.commit()
         return {"msg": "Question deleted"}, 200
 
-########################################################             CRUD FOR QUIZ DONE               ###############################################################
-########################################################            CRUD FOR QUESTIONS                ###############################################################
+class GetQuestions(Resource):
+    @jwt_required()
+    def get(self, quiz_id):
+        questions = db.session.execute(
+            db.text("""
+                SELECT q.id, q.question, q.option1, q.option2, q.option3, q.option4, q.answer, q.subject_id
+                FROM questions q
+                JOIN question_quiz qq ON q.id = qq.question_id
+                WHERE qq.quiz_id = :quiz_id
+            """),
+            {"quiz_id": quiz_id}
+        ).fetchall()
+
+        return [{
+            "id": q.id, "question": q.question,
+            "options": [q.option1, q.option2, q.option3, q.option4],
+            "answer": q.answer, "subject_id": q.subject_id
+        } for q in questions], 200
 
 class CreateQuestion(Resource):
     @jwt_required()
     def post(self, quiz_id):
         if get_jwt_identity() != "admin":
-            return {"msg": "not admin"}, 403
+            return {"msg": "Not authorized"}, 403
 
         data = request.get_json()
         if not isinstance(data, dict):
             return {"msg": "Invalid data format"}, 400
 
-        question_text = data.get("question_text")
-        options = data.get("options")
-        correct_option = data.get("correct_option")
-        marks = data.get("marks", 1)
+        question_text = data.get("question")
+        option1 = data.get("option1")
+        option2 = data.get("option2")
+        option3 = data.get("option3")
+        option4 = data.get("option4")
+        answer = data.get("answer")
+        subject_id = data.get("subject_id")
 
-        if not question_text or not options or correct_option not in options:
-            return {"msg": "Invalid question data"}, 400
+        if not all([question_text, option1, option2, option3, option4, answer, subject_id]):
+            return {"msg": "Missing required fields"}, 400
 
         db.session.execute(
             db.text("""
-                INSERT INTO questions (quiz_id, question_text, options, correct_option, marks)
-                VALUES (:quiz_id, :question_text, :options, :correct_option, :marks)
+                INSERT INTO questions (question, option1, option2, option3, option4, answer, subject_id)
+                VALUES (:question, :option1, :option2, :option3, :option4, :answer, :subject_id)
             """),
             {
-                "quiz_id": quiz_id,
-                "question_text": question_text,
-                "options": json.dumps(options),
-                "correct_option": correct_option,
-                "marks": marks
+                "question": question_text,
+                "option1": option1,
+                "option2": option2,
+                "option3": option3,
+                "option4": option4,
+                "answer": answer,
+                "subject_id": subject_id
             }
         )
         db.session.commit()
+
         return {"msg": "Question created successfully"}, 201
-
-
-class ReadQuestions(Resource):
-    @jwt_required()
-    def get(self, quiz_id):
-        questions = db.session.execute(
-            db.text("SELECT * FROM questions WHERE quiz_id = :quiz_id"),
-            {"quiz_id": quiz_id}
-        ).fetchall()
-
-        return [{"id": q.id, "question_text": q.question_text, "options": json.loads(q.options),
-                 "correct_option": q.correct_option, "marks": q.marks} for q in questions], 200
-
-
-class UpdateQuestion(Resource):
-    @jwt_required()
-    def put(self, question_id):
-        if get_jwt_identity() != "admin":
-            return {"msg": "not admin"}, 403
-
-        data = request.get_json()
-        if not isinstance(data, dict):
-            return {"msg": "Invalid"}, 400
-
-        question = db.session.execute(
-            db.text("SELECT * FROM questions WHERE id = :question_id"),
-            {"question_id": question_id}
-        ).fetchone()
-        if not question:
-            return {"msg": "Question not found"}, 404
-
-        question_text = data.get("question_text", question.question_text)
-        options = data.get("options", json.loads(question.options))
-        correct_option = data.get("correct_option", question.correct_option)
-        marks = data.get("marks", question.marks)
-
-        if correct_option not in options:
-            return {"msg": "Invalid correct option"}, 400
-
-        db.session.execute(
-            db.text("""
-                UPDATE questions
-                SET question_text = :question_text, options = :options,
-                    correct_option = :correct_option, marks = :marks
-                WHERE id = :question_id
-            """),
-            {
-                "question_text": question_text,
-                "options": json.dumps(options),
-                "correct_option": correct_option,
-                "marks": marks,
-                "question_id": question_id
-            }
-        )
-        db.session.commit()
-        return {"msg": "Question updated"}, 200
-
-
-class DeleteQuestion(Resource):
-    @jwt_required()
-    def delete(self, question_id):
-        if get_jwt_identity() != "admin":
-            return {"msg": "not admin"}, 403
-
-        db.session.execute(
-            db.text("DELETE FROM questions WHERE id = :question_id"),
-            {"question_id": question_id}
-        )
-        db.session.commit()
-        return {"msg": "Question deleted"}, 200
-
 
 ########################################################             CRUD  DONE               ###############################################################
 ########################################################             RESOURCES                ###############################################################
