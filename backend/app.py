@@ -137,6 +137,7 @@ class LoginResource(Resource):
         return make_response(response, 200)
 
 class AdminLoginResource(Resource):
+    @cross_origin(origins="http://localhost:5173")
     def post(self):
         data = request.get_json()
         username = data['username'] 

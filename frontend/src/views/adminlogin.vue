@@ -1,5 +1,5 @@
 <template>
-    <h2>Login</h2>
+    <h2> Admin Login</h2>
     <form @submit.prevent="loginAdmin">
         <div>
             <label for="username">Admin Username</label>
@@ -30,7 +30,7 @@ export default{
         };
     },
     methods:{
-        async loginUser(){
+        async loginAdmin(){
             if (!this.username || !this.password){
                 alert("All fields requeired");
                 return;
@@ -48,7 +48,7 @@ export default{
                 if (res.token){
                     localStorage.setItem("token",res.token);
                     alert("login sucessful!");
-                    this.$router.push("/userdash");
+                    this.$router.push("/admindash");
                 }else{
                     alert("Invalid Login");
                 }
