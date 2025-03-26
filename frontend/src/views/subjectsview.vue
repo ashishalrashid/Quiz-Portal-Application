@@ -1,10 +1,10 @@
 <template>
     <div class="container">
     <div class="admin-dashboard">
-              <RouterLink to="/admindash/home" class="disabled">
+              <RouterLink to="/admindash" class="icon">
                 <i class="fas fa-home"> Home</i>
               </RouterLink>
-              <RouterLink to="/admindash/subjects" class="icon">
+              <RouterLink to="/admindash/subject" class="disabled">
                 <i class="fas fa-book circular-icon">  Subjects</i>
               </RouterLink>
               <RouterLink to="/admindash/user" class="icon">
@@ -18,57 +18,40 @@
               </a>
     </div>
     <div class="subcontainer">
-    <div class="subject-list">
     <h2>Subjects</h2>
     <ul class="subs">
       <li 
-        v-for="subject in subjects.slice(0, 4)" 
+        v-for="subject in subjects" 
         :key="subject.id" 
         class="sub_item"
-        @click="goToSubject(subject.id)"
       >
-        <h3>{{ subject.name }}</h3>
-        <p>{{ subject.description }}</p>
+        <div @click="goToSubject(subject.id)">
+          <h3 class="gwak">{{ subject.name }}</h3>
+          <p>{{ subject.description }}</p>
+        </div>
+        <div class="action-buttons">
+          <button @click="goToEditSubject(subject.id)" class="but">Edit</button>
+          <button @click="deleteSubject(subject.id)" class="danger">Delete</button>
+        </div>
       </li>
     </ul>
-    <RouterLink to="/admindash/subjects" class="all-subjects">
-  All Subjects <i class="fas fa-arrow-right"></i>
-</RouterLink>
+  </div>
 
     </div>
-    <div class="stats">
-        <h2>Statistics</h2>
-        <div class="stat">
-  <ul class="count">
-    <li class="sta">User Count: <span class="big-number">{{ counts.user_count }}</span></li>
-    <li class="sta">Quiz Count: <span class="big-number">{{ counts.quiz_count }}</span></li>
-    <li class="sta">Subject Count: <span class="big-number">{{ counts.subject_count }}</span></li>
-    <li class="sta">Chapter Count: <span class="big-number">{{ counts.chapter_count }}</span></li>
-  </ul>
-</div>
-    </div>
-</div>
-  </div>
+
 </template>
 
 
 <script>
 export default {
-  name: "AdminDashboard",
+  name: "Subjects",
   data() {
     return {
-      subjects: [],
-      counts: {
-        user_count: 0,
-        quiz_count: 0,
-        subject_count: 0,
-        chapter_count: 0
-      }
+      subjects: []
     };
   },
   created() {
     this.fetchSubjects();
-    this.fetchCounts();
   },
   methods: {
     async fetchSubjects() {
@@ -88,23 +71,6 @@ export default {
         console.error("Error fetching subjects:", error);
       }
     },
-    async fetchCounts() {
-      try {
-        const response = await fetch("http://localhost:5000/getcounts", {
-          headers: {
-            "Accept": "application/json",
-            "Authorization": "Bearer " + localStorage.getItem("token")
-          }
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch counts");
-        }
-        const data = await response.json();
-        this.counts = data;
-      } catch (error) {
-        console.error("Error fetching counts:", error);
-      }
-    },
     logout() {
       localStorage.removeItem("token");
       this.$router.push("/login");
@@ -112,20 +78,36 @@ export default {
     goToSubject(subjectId) {
       this.$router.push(`/admindash/subject/${subjectId}`);
     },
-    goToAddChapter(subjectId) {
-      this.$router.push(`/admindash/subject/${subjectId}/addchapter`);
+    goToEditSubject(subjectId) {
+      this.$router.push(`/admindash/subject/${subjectId}/edit`);
     },
-    goToAllSubjects() {
-      this.$router.push("/admindash/subjects");
+    async deleteSubject(subjectId) {
+      try {
+        const response = await fetch(`http://localhost:5000/deletesubject/${subjectId}`, {
+          method: "DELETE",
+          headers: {
+            "Accept": "application/json",
+            "Authorization": "Bearer " + localStorage.getItem("token")
+          }
+        });
+        if (!response.ok) {
+          throw new Error("Failed to delete subject");
+        }
+        this.fetchSubjects();
+      } catch (error) {
+        console.error("Error deleting subject:", error);
+      }
     }
   }
 };
 </script>
 
 
+
 <style>
 html, body, #app {
   margin: 0;
+  height: 100%;
   width: 100%;
 }
 
@@ -133,6 +115,7 @@ html, body, #app {
     font-family: 'Times New Roman', Times, serif;
   display: flex;
   background-color: rgb(213, 213, 213);
+  height: 100vh;
   width: 100%;
 }
 
@@ -171,16 +154,18 @@ html, body, #app {
 .subcontainer {
     display: flex;
     flex-direction: column;
-    justify-content: space-around;
+    justify-content: flex-start;
     margin-left: 10%;
     width: 100%;
 }
 .subs {
     display: flex;
-    justify-content: space-around;
+    flex-direction: row;
+    justify-content: flex-start;
+    flex-wrap: wrap;
     list-style: none;
-    height: 300px !important;
-
+    height: 100%;
+    width: 100%;
 }
 .sub_item {
   border: 1px solid #040404;
@@ -188,61 +173,38 @@ html, body, #app {
   padding: 15px;
   cursor: pointer;
   margin: 10px;
-  width: 40%;
+  width: 150px;
+  height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  font-size: larger;
+  align-items: center;
 }
 .sub_item:hover {
   background-color: #ffffff;
   transform: scale(1.05);
 }
+.gwak {
+    font-size: 40px;
 
-.all-subjects {
-  text-decoration: none;
-  color: #fff; 
-  background-color: #003f54; 
-  padding: 10px 15px;
-  border: none;
-  border-radius: 25px;
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  font-size: 1em;
-  margin-bottom: auto;
 }
-
-.all-subjects i {
-  margin-left: 8px;
-}
-.count{
-    display: flex;;
-    justify-content: space-around;
-    height: 100%;
-}
-.subject-list {
-  margin: 0px;
-}
-
-.sta {
-    list-style: none;
-    border: 1px solid #040404;
-    border-radius: 25px;
-    padding: 10px;
-    margin: 10px;
+.action-buttons{
+    margin-top: auto;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    width: 30%;
-    height: 100%;
+    justify-content: space-around;
 }
-.sta:hover {
-    transform: scale(1.05);
+.danger{
+    background-color: red;
+    margin: 10px;
+    border: 1px;
+    border-radius: 25px;
+    
 }
-
-.stat .big-number {
-  font-size: 3em;
-  font-weight: bold;
-  color: #003f54;
-  text-decoration: none;
-
+.but{
+    background-color: #ffffff;
+    margin: 10px;
+    border: 1px;
+    border-radius: 25px;
 }
 </style>

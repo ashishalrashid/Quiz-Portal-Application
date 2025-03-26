@@ -4,6 +4,7 @@ import Login from '../views/login.vue';
 import Signup from '../views/signup.vue';
 import adminlogin from '../views/adminlogin.vue';
 import admindash from '../views/admindash.vue';
+import subjectsview from '../views/subjectsview.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,7 +13,8 @@ const router = createRouter({
         { path: '/login', name: 'login', component: Login },
         { path: '/signup', name: 'signup', component: Signup },
         { path: '/adminlogin', name: 'adminLogin', component: adminlogin },
-        { path: '/admindash', name: 'admindash', component: admindash }
+        { path: '/admindash', name: 'admindash', component: admindash },
+        { path: '/admindash/subjects', name: 'subjectview', component: subjectsview }
     ]
 });
 
