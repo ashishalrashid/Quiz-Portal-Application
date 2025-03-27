@@ -6,6 +6,8 @@ import adminlogin from '../views/adminlogin.vue';
 import admindash from '../views/admindash.vue';
 import subjectsview from '../views/subjectsview.vue';
 import chapters from '../views/chapters.vue';
+import addsub from '../views/addsub.vue';
+import addchap from '../views/addchap.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,7 +18,9 @@ const router = createRouter({
         { path: '/adminlogin', name: 'adminLogin', component: adminlogin },
         { path: '/admindash', name: 'admindash', component: admindash },
         { path: '/admindash/subjects', name: 'subjectview', component: subjectsview },
-        { path: '/admindash/subject/:subject_id', name: 'chapters', component: chapters }
+        { path: '/admindash/subject/:subject_id', name: 'chapters', component: chapters },
+        { path: '/admindash/createsubject', name: 'addsub', component: addsub },
+        { path: '/createchapter/:subject_id', name: 'addchap', component: addchap }
     ]
 });
 

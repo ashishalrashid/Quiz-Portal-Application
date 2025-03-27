@@ -21,16 +21,14 @@
         <div class="subcontainer">
             <div class="top">
             <h2>Chapters</h2>
-            <RouterLink :to="`/admindash/createchapter/${subjectId}`" 
-                class="all-subjects"
-            >
-                <i class="fas fa-plus-circle"> Add Chapter</i>
-            </RouterLink>
+            <button @click="goToCreateChapter" class="all-subjects">
+    <i class="fas fa-plus-circle"> Add Chapter</i>
+  </button>
 
         </div>
             <ul class="subs">
                 <li v-for="chapter in chapters" :key="chapter.id" class="sub_item">
-                    <div>
+                    <div @click="goToChapter(chapter.id)">
                         <h3 class="gwak">{{ chapter.name }}</h3>
                         <p>{{ chapter.description }}</p>
                     </div>
@@ -74,29 +72,15 @@ export default {
                 console.error("Error fetching chapters:", error);
             }
         },
-        async deleteSubject(subjectId) {
-      try {
-        const response = await fetch(`http://localhost:5000/deletechapter/${ChapterId}`, {
-          method: "DELETE",
-          headers: {
-            "Accept": "application/json",
-            "Authorization": "Bearer " + localStorage.getItem("token")
-          }
-        });
-        if (!response.ok) {
-          throw new Error("Failed");
-        }
-        this.fetchSubjects();
-      } catch (error) {
-        console.error("Error", error);
-      }
-    },
         logout() {
             localStorage.removeItem("token");
             this.$router.push("/login");
         },
         goToEditChapter(chapterId) {
             this.$router.push(`/admindash/chapter/${chapterId}/edit`);
+        },
+        goToChapter(chapterId) {
+            this.$router.push(`/admindash/chapter/${chapterId}`);
         },
         async deleteChapter(chapterId) {
             try {
@@ -114,10 +98,19 @@ export default {
             } catch (error) {
                 console.error("Error deleting chapter:", error);
             }
-        }
+        },
+        goToCreateChapter() {
+    const subjectId = this.$route.params.subject_id; 
+    if (subjectId) {
+        this.$router.push(`/createchapter/${subjectId}`); // Navigate
+    } else {
+        console.error("Subject ID not found in URL params");
     }
-};
+}
+    }
+}; 
 </script>
+
 
 <style>
 html, body, #app {

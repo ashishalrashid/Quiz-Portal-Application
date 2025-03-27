@@ -188,7 +188,7 @@ html, body, #app {
   padding: 15px;
   cursor: pointer;
   margin: 10px;
-  width: 40%;
+  width: 150px !important;
 }
 .sub_item:hover {
   background-color: #ffffff;

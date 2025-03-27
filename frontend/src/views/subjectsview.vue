@@ -4,7 +4,7 @@
               <RouterLink to="/admindash" class="icon">
                 <i class="fas fa-home"> Home</i>
               </RouterLink>
-              <RouterLink to="/admindash/subject" class="disabled">
+              <RouterLink to="/admindash/subjects" class="disabled">
                 <i class="fas fa-book circular-icon">  Subjects</i>
               </RouterLink>
               <RouterLink to="/admindash/user" class="icon">
@@ -114,8 +114,6 @@ export default {
 <style>
 html, body, #app {
   margin: 0;
-  height: 100%;
-  width: 100%;
 }
 
 .container {
@@ -161,9 +159,8 @@ html, body, #app {
 .subcontainer {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
+    justify-content: flex-start !important;
     margin-left: 10%;
-    width: 100%;
     overflow-y: auto;
 }
 .subs {
@@ -173,14 +170,15 @@ html, body, #app {
     flex-wrap: wrap;
     list-style: none;
     height: 100%;
-    width: 100%;
+    margin-top: 0px !important;
+    width: 90% !important;
 }
 .sub_item {
   border: 1px solid #040404;
   border-radius: 25px;
   padding: 15px;
   cursor: pointer;
-  margin: 10px;
+  margin: 20px !important;
   width: 150px;
   height: 250px;
   display: flex;
@@ -214,5 +212,8 @@ html, body, #app {
     margin: 10px;
     border: 1px;
     border-radius: 25px;
+}
+.all-subjects{
+  margin-top:auto !important;
 }
 </style>
