@@ -17,6 +17,7 @@ import editchap from '../views/editchap.vue';
 import editquiz from '../views/editquiz.vue';
 import viewusers from '../views/viewusers.vue';
 import stats from '../views/stats.vue';
+import userdash from '../views/userdash.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -38,7 +39,8 @@ const router = createRouter({
         { path: '/editchapter/:chapter_id', name: 'editchap', component: editchap },
         { path: '/editquiz/:quiz_id', name: 'editquiz', component: editquiz },
         { path: '/admindash/user', name: 'viewuser', component: viewusers },
-        { path: '/admindash/stats', name: 'stats', component: stats }
+        { path: '/admindash/stats', name: 'stats', component: stats },
+        { path: '/userdash', name: 'userdash', component: userdash }
     ]
 });
 
