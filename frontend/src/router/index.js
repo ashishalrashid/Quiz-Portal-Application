@@ -10,6 +10,7 @@ import addsub from '../views/addsub.vue';
 import addchap from '../views/addchap.vue';
 import viewchapter from '../views/viewchapter.vue';
 import addquiz from '../views/addquiz.vue';
+import viewquiz from '../views/viewquiz.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -24,7 +25,8 @@ const router = createRouter({
         { path: '/admindash/createsubject', name: 'addsub', component: addsub },
         { path: '/createchapter/:subject_id', name: 'addchap', component: addchap },
         { path: '/chapter/:chapter_id', name: 'viewchapter', component: viewchapter },
-        { path: '/createquiz/:chapter_id', name: 'addquiz', component: addquiz }
+        { path: '/createquiz/:chapter_id', name: 'addquiz', component: addquiz },
+        { path: '/quiz/:quiz_id', name: 'viewquiz', component: viewquiz }
     ]
 });
 

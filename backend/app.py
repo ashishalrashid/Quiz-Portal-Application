@@ -69,7 +69,7 @@ class Subject(db.Model):
     name = db.Column(db.String(), nullable=False, unique=True)
     description = db.Column(db.String())
     chapters = db.relationship('Chapter', backref='subject', cascade="all, delete-orphan")
-    questions = db.relationship('Questions', backref='subject', cascade="all, delete-orphan")
+    
     user_subjects = db.relationship('User_Subject', backref='subject', cascade="all, delete-orphan")
 
 class Chapter(db.Model):
@@ -87,7 +87,7 @@ class Quiz(db.Model):
     end_date = db.Column(db.Date, nullable=True)
     time_duration = db.Column(db.Interval, nullable=False, default=timedelta(minutes=20))
     scores = db.relationship('Scores', backref='quiz', cascade="all, delete-orphan")
-    question_quizzes = db.relationship('Question_Quiz', backref='quiz', cascade="all, delete-orphan")
+    questions = db.relationship('Questions', backref='subject', cascade="all, delete-orphan")
 
 class Scores(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -103,18 +103,13 @@ class Questions(db.Model):
     option3 = db.Column(db.String())
     option4 = db.Column(db.String())
     answer = db.Column(db.Integer, nullable=False)
-    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id', ondelete='CASCADE'), nullable=False)
-    question_quizzes = db.relationship('Question_Quiz', backref='question', cascade="all, delete-orphan")
+    quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id', ondelete='CASCADE'), nullable=False)
 
 class User_Subject(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     subject_id = db.Column(db.Integer, db.ForeignKey('subject.id', ondelete='CASCADE'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
 
-class Question_Quiz(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id', ondelete='CASCADE'), nullable=False)
-    question_id = db.Column(db.Integer, db.ForeignKey('questions.id', ondelete='CASCADE'), nullable=False)
 
 
 #milestone 0 completed
@@ -451,7 +446,6 @@ class GetQuiz(Resource):
 
         return {"quizzes": quizzes_list}, 200
 
-
 class CreateQuiz(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
@@ -552,32 +546,32 @@ class DeleteQuiz(Resource):
 
 ########################################################             CRUD FOR QUIZ DONE               ###############################################################
 ########################################################            CRUD FOR QUESTIONS                ###############################################################
+
+
+########################################################             ADMIN DONE               ###############################################################
+##################################         USERS: TAKE QUESTIONS, EVALUATE QUESTIONS, GET SUB CHAPTERS,AND QUIZ            ##############################################
+
 class EditQuestion(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
     def put(self, question_id):
         if get_jwt_identity() != "admin":
             return {"msg": "Not authorized"}, 403
-
         data = request.get_json()
         if not isinstance(data, dict):
             return {"msg": "Invalid data format"}, 400
-
         question = db.session.execute(
             db.text("SELECT * FROM questions WHERE id = :question_id"),
             {"question_id": question_id}
         ).fetchone()
-
         if not question:
             return {"msg": "Question not found"}, 404
-
         question_text = data.get("question", question.question)
         option1 = data.get("option1", question.option1)
         option2 = data.get("option2", question.option2)
         option3 = data.get("option3", question.option3)
         option4 = data.get("option4", question.option4)
         answer = data.get("answer", question.answer)
-
         db.session.execute(
             db.text("""
                 UPDATE questions
@@ -604,7 +598,6 @@ class DeleteQuestion(Resource):
     def delete(self, question_id):
         if get_jwt_identity() != "admin":
             return {"msg": "Not authorized"}, 403
-
         db.session.execute(
             db.text("DELETE FROM questions WHERE id = :question_id"),
             {"question_id": question_id}
@@ -618,18 +611,17 @@ class GetQuestions(Resource):
     def get(self, quiz_id):
         questions = db.session.execute(
             db.text("""
-                SELECT q.id, q.question, q.option1, q.option2, q.option3, q.option4, q.answer, q.subject_id
+                SELECT q.id, q.question, q.option1, q.option2, q.option3, q.option4, q.answer
                 FROM questions q
-                JOIN question_quiz qq ON q.id = qq.question_id
-                WHERE qq.quiz_id = :quiz_id
+                WHERE q.quiz_id = :quiz_id
             """),
             {"quiz_id": quiz_id}
         ).fetchall()
-
         return [{
-            "id": q.id, "question": q.question,
+            "id": q.id,
+            "question": q.question,
             "options": [q.option1, q.option2, q.option3, q.option4],
-            "answer": q.answer, "subject_id": q.subject_id
+            "answer": q.answer
         } for q in questions], 200
 
 class CreateQuestion(Resource):
@@ -638,26 +630,21 @@ class CreateQuestion(Resource):
     def post(self, quiz_id):
         if get_jwt_identity() != "admin":
             return {"msg": "Not authorized"}, 403
-
         data = request.get_json()
         if not isinstance(data, dict):
             return {"msg": "Invalid data format"}, 400
-
         question_text = data.get("question")
         option1 = data.get("option1")
         option2 = data.get("option2")
         option3 = data.get("option3")
         option4 = data.get("option4")
         answer = data.get("answer")
-        subject_id = data.get("subject_id")
-
-        if not all([question_text, option1, option2, option3, option4, answer, subject_id]):
+        if not all([question_text, option1, option2, option3, option4, answer]):
             return {"msg": "Missing required fields"}, 400
-
         db.session.execute(
             db.text("""
-                INSERT INTO questions (question, option1, option2, option3, option4, answer, subject_id)
-                VALUES (:question, :option1, :option2, :option3, :option4, :answer, :subject_id)
+                INSERT INTO questions (question, option1, option2, option3, option4, answer, quiz_id)
+                VALUES (:question, :option1, :option2, :option3, :option4, :answer, :quiz_id)
             """),
             {
                 "question": question_text,
@@ -666,15 +653,11 @@ class CreateQuestion(Resource):
                 "option3": option3,
                 "option4": option4,
                 "answer": answer,
-                "subject_id": subject_id
+                "quiz_id": quiz_id
             }
         )
         db.session.commit()
-
         return {"msg": "Question created successfully"}, 201
-
-########################################################             ADMIN DONE               ###############################################################
-##################################         USERS: TAKE QUESTIONS, EVALUATE QUESTIONS, GET SUB CHAPTERS,AND QUIZ            ##############################################
 
 
 
