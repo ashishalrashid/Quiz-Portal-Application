@@ -26,7 +26,6 @@
               <th>Question</th>
               <th>Options</th>
               <th>Answer</th>
-              <th>Subject ID</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -40,11 +39,9 @@
                 </ul>
               </td>
               <td>{{ question.answer }}</td>
-              <td>{{ question.subject_id }}</td>
               <td class="action-buttons">
                 <button @click="goToEditQuestion(question.id)" class="but">Edit</button>
                 <button @click="deleteQuestion(question.id)" class="danger">Delete</button>
-                <button @click="goToQuiz(question.id)" class="but">Go To Quiz</button>
               </td>
             </tr>
           </tbody>
@@ -173,6 +170,11 @@
   .question-table th {
     background-color: #f4f4f4;
   }
+  .question-table th,
+.question-table td {
+  height: 50px;
+  vertical-align: middle;
+}
   .action-buttons {
     display: flex;
     gap: 10px;
