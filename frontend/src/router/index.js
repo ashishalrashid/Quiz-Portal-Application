@@ -11,6 +11,10 @@ import addchap from '../views/addchap.vue';
 import viewchapter from '../views/viewchapter.vue';
 import addquiz from '../views/addquiz.vue';
 import viewquiz from '../views/viewquiz.vue';
+import addquest from '../views/addquest.vue';
+import editsub from '../views/editsub.vue';
+import editchap from '../views/editchap.vue';
+import editquiz from '../views/editquiz.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,7 +30,11 @@ const router = createRouter({
         { path: '/createchapter/:subject_id', name: 'addchap', component: addchap },
         { path: '/chapter/:chapter_id', name: 'viewchapter', component: viewchapter },
         { path: '/createquiz/:chapter_id', name: 'addquiz', component: addquiz },
-        { path: '/quiz/:quiz_id', name: 'viewquiz', component: viewquiz }
+        { path: '/quiz/:quiz_id', name: 'viewquiz', component: viewquiz },
+        { path: '/createquestion/:quiz_id', name: 'addquest', component: addquest },
+        { path: '/editsubject/:subject_id', name: 'editsub', component: editsub },
+        { path: '/editchapter/:chapter_id', name: 'editchap', component: editchap },
+        { path: '/editquiz/:quiz_id', name: 'editquiz', component: editquiz }
     ]
 });
 

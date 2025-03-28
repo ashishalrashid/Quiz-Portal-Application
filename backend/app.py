@@ -204,18 +204,37 @@ class EditSubject(Resource):
         if identity != "admin":
             return jsonify({"msg": "Only admin can edit subjects"}), 403
         data = request.get_json()
-        subject = Subject.query.get(subject_id)
+        subject = db.session.execute(
+            db.text("SELECT * FROM subject WHERE id = :subject_id"),
+            {"subject_id": subject_id}
+        ).fetchone()
         if not subject:
             return jsonify({"msg": "Subject not found"}), 404
-        name = data.get('name')
-        description = data.get('description', None)
-        if name:
-            subject.name = name
-        subject.description = description
+        db.session.execute(
+            db.text("""
+                UPDATE subject
+                SET name = CASE WHEN :name = '' THEN name ELSE :name END,
+                    description = CASE WHEN :description = '' THEN description ELSE :description END
+                WHERE id = :subject_id
+            """),
+            {
+                "name": data.get("name", ""),
+                "description": data.get("description", ""),
+                "subject_id": subject_id
+            }
+        )
         db.session.commit()
+        updated_subject = db.session.execute(
+            db.text("SELECT * FROM subject WHERE id = :subject_id"),
+            {"subject_id": subject_id}
+        ).fetchone()
         return jsonify({
             "msg": "Subject updated successfully",
-            "subject": {"id": subject.id, "name": subject.name, "description": subject.description}
+            "subject": {
+                "id": updated_subject.id,
+                "name": updated_subject.name,
+                "description": updated_subject.description
+            }
         }), 200
 
 class DeleteSubject(Resource):
@@ -489,7 +508,6 @@ class EditQuiz(Resource):
             db.text("SELECT * FROM quiz WHERE id = :quiz_id"),
             {"quiz_id": quiz_id}
         ).fetchone()
-
         if not quiz:
             return {"msg": "Quiz not found"}, 404
 
@@ -497,33 +515,41 @@ class EditQuiz(Resource):
         chapter_id = data.get("chapter_id", quiz.chapter_id)
         start_date_str = data.get("start_date")
         end_date_str = data.get("end_date")
-        time_duration_minutes = data.get("time_duration")
+        time_duration_input = data.get("time_duration")
 
         try:
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else quiz.start_date
             end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else quiz.end_date
-            time_duration = timedelta(minutes=float(time_duration_minutes)) if time_duration_minutes is not None else quiz.time_duration
+            if time_duration_input is not None:
+                time_duration = int(float(time_duration_input))
+            else:
+                if hasattr(quiz.time_duration, "total_seconds"):
+                    time_duration = int(quiz.time_duration.total_seconds() // 60)
+                else:
+                    time_duration = quiz.time_duration
         except Exception:
             return {"msg": "Invalid date or duration format"}, 400
 
-        db.session.execute(
-            db.text("""
-                UPDATE quiz
-                SET name = :name, chapter_id = :chapter_id, start_date = :start_date, end_date = :end_date, time_duration = :time_duration
-                WHERE id = :quiz_id
-            """),
-            {
-                "name": name,
-                "chapter_id": chapter_id,
-                "start_date": start_date,
-                "end_date": end_date,
-                "time_duration": time_duration,
-                "quiz_id": quiz_id
-            }
-        )
+        # Build update query dynamically
+        update_fields = [
+            "name = :name",
+            "start_date = :start_date",
+            "end_date = :end_date",
+            "time_duration = :time_duration"
+        ]
+        params = {
+            "name": name,
+            "start_date": start_date,
+            "end_date": end_date,
+            "time_duration": time_duration,
+            "quiz_id": quiz_id
+        }
+        query = f"UPDATE quiz SET {', '.join(update_fields)} WHERE id = :quiz_id"
+        db.session.execute(db.text(query), params)
         db.session.commit()
-        
+
         return {"msg": "Quiz updated successfully"}, 200
+
 
 class DeleteQuiz(Resource):
     @jwt_required()
@@ -708,7 +734,7 @@ api.add_resource(DeleteChapter, "/deletechapter/<int:chapter_id>")
 api.add_resource(CreateQuiz,"/createquiz/<int:chapter_id>")
 api.add_resource(GetQuiz,"/getquiz/<int:chapter_id>")
 api.add_resource(DeleteQuiz,"/deletequiz/<int:quiz_id>")
-api.add_resource(EditQuiz,"/editequiz/<int:chapter_id>")
+api.add_resource(EditQuiz,"/editquiz/<int:quiz_id>")
 api.add_resource(CreateQuestion, "/createquestion/<int:quiz_id>")
 api.add_resource(EditQuestion, "/editquestion/<int:question_id>")
 api.add_resource(DeleteQuestion, "/deletequestion/<int:question_id>")

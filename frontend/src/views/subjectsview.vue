@@ -86,7 +86,7 @@ export default {
       this.$router.push(`/admindash/subject/${subjectId}`);
     },
     goToEditSubject(subjectId) {
-      this.$router.push(`/admindash/subject/${subjectId}/edit`);
+      this.$router.push(`/editsubject/${subjectId}`);
     },
     async deleteSubject(subjectId) {
       try {

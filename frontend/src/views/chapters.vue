@@ -77,7 +77,7 @@ export default {
             this.$router.push("/login");
         },
         goToEditChapter(chapterId) {
-            this.$router.push(`/admindash/chapter/${chapterId}/edit`);
+            this.$router.push(`/editchapter/${chapterId}`);
         },
         goToChapter(chapterId) {
             this.$router.push(`/chapter/${chapterId}`);

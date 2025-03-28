@@ -91,7 +91,7 @@ export default {
             this.$router.push("/login");
         },
         goToEditQuiz(quizId) {
-            this.$router.push(`/quiz/${quizId}/edit`);
+            this.$router.push(`/editquiz/${quizId}`);
         },
         goToCreateQuiz() {
             const chapterId = this.$route.params.chapter_id;
