@@ -1,7 +1,7 @@
 <template>
     <div class="container">
     <div class="admin-dashboard">
-              <RouterLink to="/admindash/home" class="disabled">
+              <RouterLink to="/admindash" class="disabled">
                 <i class="fas fa-home"> Home</i>
               </RouterLink>
               <RouterLink to="/admindash/subjects" class="icon">
@@ -161,6 +161,9 @@ html, body, #app {
   transform: scale(1.1);
 }
 .disabled{
+    display: flex !important;
+    justify-content: center !important;
+    text-decoration: none !important;
     background-color: rgb(117, 116, 116);
     padding: 10px;
     border-radius: 250px;

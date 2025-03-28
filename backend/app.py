@@ -58,7 +58,7 @@ class User(db.Model):
     qualification = db.Column(db.String(32), nullable=False)
     dob = db.Column(db.Date, nullable=True)
     scores = db.relationship('Scores', backref='user', cascade="all, delete-orphan")
-    user_subjects = db.relationship('User_Subject', backref='user', cascade="all, delete-orphan")
+    usersubjects = db.relationship('UserSubject', backref='user', cascade="all, delete-orphan")
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
     def check_password(self, password):
@@ -70,7 +70,7 @@ class Subject(db.Model):
     description = db.Column(db.String())
     chapters = db.relationship('Chapter', backref='subject', cascade="all, delete-orphan")
     
-    user_subjects = db.relationship('User_Subject', backref='subject', cascade="all, delete-orphan")
+    usersubjects = db.relationship('UserSubject', backref='subject', cascade="all, delete-orphan")
 
 class Chapter(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -105,7 +105,8 @@ class Questions(db.Model):
     answer = db.Column(db.Integer, nullable=False)
     quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id', ondelete='CASCADE'), nullable=False)
 
-class User_Subject(db.Model):
+class UserSubject(db.Model):
+    __tablename__ = 'usersubject'
     id = db.Column(db.Integer, primary_key=True)
     subject_id = db.Column(db.Integer, db.ForeignKey('subject.id', ondelete='CASCADE'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
@@ -550,7 +551,6 @@ class EditQuiz(Resource):
 
         return {"msg": "Quiz updated successfully"}, 200
 
-
 class DeleteQuiz(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
@@ -572,10 +572,6 @@ class DeleteQuiz(Resource):
 
 ########################################################             CRUD FOR QUIZ DONE               ###############################################################
 ########################################################            CRUD FOR QUESTIONS                ###############################################################
-
-
-########################################################             ADMIN DONE               ###############################################################
-##################################         USERS: TAKE QUESTIONS, EVALUATE QUESTIONS, GET SUB CHAPTERS,AND QUIZ            ##############################################
 
 class EditQuestion(Resource):
     @jwt_required()
@@ -685,6 +681,9 @@ class CreateQuestion(Resource):
         db.session.commit()
         return {"msg": "Question created successfully"}, 201
 
+########################################################             ADMIN DONE               ###############################################################
+##################################         USERS: TAKE QUESTIONS, EVALUATE QUESTIONS, GET SUB CHAPTERS,AND QUIZ            ##############################################
+
 
 
 ########################################################             CRUD  DONE               ###############################################################
@@ -713,6 +712,28 @@ class GetCounts(Resource):
             "chapter_count": chapter_count
         }, 200
 
+class SubjectStats(Resource):
+    @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
+    def get(self):
+        sql = text("""
+            SELECT s.id, s.name,
+              (SELECT COUNT(*) FROM usersubject us WHERE us.subject_id = s.id) as user_count,
+              (SELECT AVG(sc.score)
+               FROM quiz q
+               JOIN chapter c ON q.chapter_id = c.id
+               JOIN scores sc ON sc.quiz_id = q.id
+               WHERE c.subject_id = s.id) as avg_score
+            FROM subject s;
+        """)
+        result = db.session.execute(sql).fetchall()
+        stats = [{
+            "id": row.id,
+            "name": row.name,
+            "user_count": row.user_count,
+            "avg_score": row.avg_score
+        } for row in result]
+        return jsonify({"stats": stats})
 
 ########################################################             STATS DONE               ###############################################################
 ########################################################             RESOURCES                ###############################################################
@@ -740,6 +761,7 @@ api.add_resource(EditQuestion, "/editquestion/<int:question_id>")
 api.add_resource(DeleteQuestion, "/deletequestion/<int:question_id>")
 api.add_resource(GetQuestions,"/getquestion/<int:quiz_id>")
 api.add_resource(GetCounts,"/getcounts")
+api.add_resource(SubjectStats,"/subjectstats")
 
 
 if __name__ == '__main__':

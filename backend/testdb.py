@@ -1,6 +1,6 @@
 import os
 from datetime import date, timedelta
-from app import app, db, Admin, User, Subject, Chapter, Quiz, Scores, Questions, User_Subject
+from app import app, db, Admin, User, Subject, Chapter, Quiz, Scores, Questions, UserSubject
 
 # Configure the database URI to use the instance folder
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///" + os.path.join(app.instance_path, "db.sqlite3")
@@ -26,7 +26,6 @@ with app.app_context():
     for user in users:
         user.set_password("password123")
         db.session.add(user)
-    
     db.session.flush()
 
     # Create subjects
@@ -62,7 +61,7 @@ with app.app_context():
     db.session.add_all(quizzes)
     db.session.flush()
 
-    # Create questions (using quiz_id instead of subject_id)
+    # Create questions (using quiz_id)
     questions = [
         Questions(question="What is 2+2?", option1="3", option2="4", option3="5", option4="22", answer=2, quiz_id=quizzes[0].id),
         Questions(question="Solve 2x=10", option1="4", option2="5", option3="6", option4="7", answer=2, quiz_id=quizzes[0].id),
@@ -84,6 +83,19 @@ with app.app_context():
         Scores(quiz_id=quizzes[5].id, user_id=users[0].id, score=92),
     ]
     db.session.add_all(scores)
+
+    # Create usersubject relationships (indicating which users have taken which subjects)
+    usersubjects = [
+        UserSubject(subject_id=subjects[0].id, user_id=users[0].id),
+        UserSubject(subject_id=subjects[0].id, user_id=users[1].id),
+        UserSubject(subject_id=subjects[1].id, user_id=users[2].id),
+        UserSubject(subject_id=subjects[2].id, user_id=users[3].id),
+        UserSubject(subject_id=subjects[2].id, user_id=users[4].id),
+        # Additional relationships for testing
+        UserSubject(subject_id=subjects[1].id, user_id=users[0].id),
+        UserSubject(subject_id=subjects[2].id, user_id=users[1].id),
+    ]
+    db.session.add_all(usersubjects)
 
     db.session.commit()
     print("Sample data added successfully!")
