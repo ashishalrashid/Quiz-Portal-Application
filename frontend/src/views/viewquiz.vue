@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
     <div class="container">
         <div class="admin-dashboard">
             <RouterLink to="/admindash" class="icon">
@@ -219,4 +219,4 @@ html, body, #app {
 .all-quizzes {
     margin-top: auto !important;
 }
-</style>
+</style> -->

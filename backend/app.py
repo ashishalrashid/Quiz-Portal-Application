@@ -443,11 +443,14 @@ class GetQuiz(Resource):
             if isinstance(q_dict["time_duration"], str):
                 dt = datetime.strptime(q_dict["time_duration"], "%Y-%m-%d %H:%M:%S.%f")
                 q_dict["time_duration"] = int((dt - base).total_seconds() // 60)
-            else:
+            elif hasattr(q_dict["time_duration"], "total_seconds"):
                 q_dict["time_duration"] = int(q_dict["time_duration"].total_seconds() // 60)
+            else:
+                q_dict["time_duration"] = int(q_dict["time_duration"])
             quizzes_list.append(q_dict)
 
         return {"quizzes": quizzes_list}, 200
+
 
 class CreateQuiz(Resource):
     @jwt_required()
@@ -458,18 +461,21 @@ class CreateQuiz(Resource):
         data = request.get_json()
         if not isinstance(data, dict):
             return {"msg": "Invalid data format"}, 400
+        name = data.get("name")
+        if not name:
+            return {"msg": "Quiz name is required"}, 400
         start_date_str = data.get("start_date")
         end_date_str = data.get("end_date")
         time_duration_minutes = data.get("time_duration")
         try:
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else None
             end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
-            time_duration = timedelta(minutes=float(time_duration_minutes)) if time_duration_minutes is not None else timedelta(minutes=20)
+            time_duration = int(float(time_duration_minutes)) if time_duration_minutes is not None else 20
         except Exception:
             return {"msg": "Invalid date or duration format"}, 400
         db.session.execute(
-            db.text("INSERT INTO quiz (chapter_id, start_date, end_date, time_duration) VALUES (:chapter_id, :start_date, :end_date, :time_duration)"),
-            {"chapter_id": chapter_id, "start_date": start_date, "end_date": end_date, "time_duration": time_duration}
+            db.text("INSERT INTO quiz (name, chapter_id, start_date, end_date, time_duration) VALUES (:name, :chapter_id, :start_date, :end_date, :time_duration)"),
+            {"name": name, "chapter_id": chapter_id, "start_date": start_date, "end_date": end_date, "time_duration": time_duration}
         )
         db.session.commit()
         return {"msg": "Quiz created successfully"}, 201

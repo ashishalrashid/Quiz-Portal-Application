@@ -191,10 +191,6 @@ html, body, #app {
   background-color: #ffffff;
   transform: scale(1.05);
 }
-.gwak {
-    font-size: 40px;
-
-}
 .action-buttons{
     margin-top: auto;
     display: flex;
@@ -215,5 +211,8 @@ html, body, #app {
 }
 .all-subjects{
   margin-top:auto !important;
+}
+.gwak{
+  font-size: 30px !important;
 }
 </style>

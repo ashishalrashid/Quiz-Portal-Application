@@ -79,7 +79,7 @@
             }
           );
           console.log("Quiz created successfully:", response.data);
-          this.$router.push(`/admindash/chapter/${chapterId}`);
+          this.$router.push(`/chapter/${chapterId}`);
         } catch (error) {
           console.error("Error:", error);
         }
