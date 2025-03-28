@@ -81,6 +81,7 @@ class Chapter(db.Model):
 
 class Quiz(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(), nullable=False)
     chapter_id = db.Column(db.Integer, db.ForeignKey('chapter.id', ondelete='CASCADE'), nullable=False)
     start_date = db.Column(db.Date, nullable=True)
     end_date = db.Column(db.Date, nullable=True)
@@ -422,19 +423,30 @@ class DeleteChapter(Resource):
 class GetQuiz(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
-    def get(self, subject_id):
+    def get(self, chapter_id):
         quizzes = db.session.execute(
             db.text("""
-                SELECT q.* 
-                FROM quiz q 
-                JOIN chapter c ON q.chapter_id = c.id 
-                WHERE c.subject_id = :subject_id
+                SELECT id, name, chapter_id, start_date, end_date, time_duration 
+                FROM quiz
+                WHERE chapter_id = :chapter_id
             """),
-            {"subject_id": subject_id}
+            {"chapter_id": chapter_id}
         ).fetchall()
+        
         if not quizzes:
             return {"msg": "No quizzes found"}, 404
-        quizzes_list = [dict(q._mapping) for q in quizzes]
+        
+        quizzes_list = []
+        base = datetime(1970, 1, 1)
+        for q in quizzes:
+            q_dict = dict(q._mapping)
+            if isinstance(q_dict["time_duration"], str):
+                dt = datetime.strptime(q_dict["time_duration"], "%Y-%m-%d %H:%M:%S.%f")
+                q_dict["time_duration"] = int((dt - base).total_seconds() // 60)
+            else:
+                q_dict["time_duration"] = int(q_dict["time_duration"].total_seconds() // 60)
+            quizzes_list.append(q_dict)
+
         return {"quizzes": quizzes_list}, 200
 
 class CreateQuiz(Resource):
@@ -468,34 +480,49 @@ class EditQuiz(Resource):
     def put(self, quiz_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
+
         data = request.get_json()
         if not isinstance(data, dict):
             return {"msg": "Invalid data format"}, 400
+
         quiz = db.session.execute(
             db.text("SELECT * FROM quiz WHERE id = :quiz_id"),
             {"quiz_id": quiz_id}
         ).fetchone()
+
         if not quiz:
             return {"msg": "Quiz not found"}, 404
+
+        name = data.get("name", quiz.name)
         chapter_id = data.get("chapter_id", quiz.chapter_id)
         start_date_str = data.get("start_date")
         end_date_str = data.get("end_date")
         time_duration_minutes = data.get("time_duration")
+
         try:
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else quiz.start_date
             end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else quiz.end_date
             time_duration = timedelta(minutes=float(time_duration_minutes)) if time_duration_minutes is not None else quiz.time_duration
-        except Exception as e:
+        except Exception:
             return {"msg": "Invalid date or duration format"}, 400
+
         db.session.execute(
             db.text("""
                 UPDATE quiz
-                SET chapter_id = :chapter_id, start_date = :start_date, end_date = :end_date, time_duration = :time_duration
+                SET name = :name, chapter_id = :chapter_id, start_date = :start_date, end_date = :end_date, time_duration = :time_duration
                 WHERE id = :quiz_id
             """),
-            {"chapter_id": chapter_id, "start_date": start_date, "end_date": end_date, "time_duration": time_duration, "quiz_id": quiz_id}
+            {
+                "name": name,
+                "chapter_id": chapter_id,
+                "start_date": start_date,
+                "end_date": end_date,
+                "time_duration": time_duration,
+                "quiz_id": quiz_id
+            }
         )
         db.session.commit()
+        
         return {"msg": "Quiz updated successfully"}, 200
 
 class DeleteQuiz(Resource):
@@ -690,6 +717,9 @@ api.add_resource(CreateChapter, "/createchapter/<int:subject_id>")
 api.add_resource(EditChapter, "/editchapter/<int:chapter_id>")
 api.add_resource(DeleteChapter, "/deletechapter/<int:chapter_id>")
 api.add_resource(CreateQuiz,"/createquiz/<int:chapter_id>")
+api.add_resource(GetQuiz,"/getquiz/<int:chapter_id>")
+api.add_resource(DeleteQuiz,"/deletequiz/<int:quiz_id>")
+api.add_resource(EditQuiz,"/editequiz/<int:chapter_id>")
 api.add_resource(CreateQuestion, "/createquestion/<int:quiz_id>")
 api.add_resource(EditQuestion, "/editquestion/<int:question_id>")
 api.add_resource(DeleteQuestion, "/deletequestion/<int:question_id>")

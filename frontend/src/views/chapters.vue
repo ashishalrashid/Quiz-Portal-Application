@@ -80,7 +80,7 @@ export default {
             this.$router.push(`/admindash/chapter/${chapterId}/edit`);
         },
         goToChapter(chapterId) {
-            this.$router.push(`/admindash/chapter/${chapterId}`);
+            this.$router.push(`/chapter/${chapterId}`);
         },
         async deleteChapter(chapterId) {
             try {
