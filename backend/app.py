@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_restful import Api, Resource
-from datetime import timedelta
+from datetime import timedelta, date
 from flask_cors import cross_origin
 from sqlalchemy import text
 import os
@@ -360,8 +360,6 @@ class GetChapter(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
     def get(self, subject_id):
-        if get_jwt_identity() != "admin":
-            return {"msg": "not admin"}, 403
         chapters = db.session.execute(
             db.text("SELECT * FROM chapter WHERE subject_id = :subject_id"),
             {"subject_id": subject_id}
@@ -705,6 +703,38 @@ class GetUserSubjects(Resource):
         print(subjects, "there is ")
         return jsonify({"subjects": subjects})
 
+class GetUserQuizzes(Resource):
+    @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
+    def get(self,subject_id):
+        today = date.today()
+        sql = text("""
+            SELECT q.id, q.name AS quiz_name, c.name AS chapter_name,
+                   q.start_date, q.end_date, q.time_duration
+            FROM quiz q
+            JOIN chapter c ON q.chapter_id = c.id
+            WHERE q.end_date >= :today
+                   and c.subject_id=:subject_id
+                   and q.start_date <= :today
+        """)
+        result = db.session.execute(sql, {"subject_id": subject_id, "today": today}).fetchall()
+        quizzes = []
+        for row in result:
+            duration = None
+            if row.time_duration:
+                try:
+                    duration = int(row.time_duration.total_seconds() // 60)
+                except Exception:
+                    duration = row.time_duration
+            quizzes.append({
+                "id": row.id,
+                "quiz_name": row.quiz_name,
+                "chapter_name": row.chapter_name,
+                "start_date":  row.start_date ,
+                "end_date": row.end_date ,
+                "duration": duration
+            })
+        return jsonify({"quizzes": quizzes})
 
 
 
@@ -785,7 +815,7 @@ api.add_resource(GetQuestions,"/getquestion/<int:quiz_id>")
 api.add_resource(GetCounts,"/getcounts")
 api.add_resource(SubjectStats,"/subjectstats")
 api.add_resource(GetUserSubjects,"/getus")
-
+api.add_resource(GetUserQuizzes,"/getuserquizzes/<int:subject_id>")
 
 if __name__ == '__main__':
     app.run(debug=True)
