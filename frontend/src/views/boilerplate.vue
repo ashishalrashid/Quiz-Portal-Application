@@ -69,3 +69,72 @@ html, body, #app {
 }
 
 </style>
+
+<script>export default {
+  name: "AdminDashboard",
+  data() {
+    return {
+      subjects: [],
+      counts: {
+        user_count: 0,
+        quiz_count: 0,
+        subject_count: 0,
+        chapter_count: 0
+      }
+    };
+  },
+  created() {
+    this.fetchSubjects();
+    this.fetchCounts();
+  },
+  methods: {
+    async fetchSubjects() {
+      try {
+        const response = await fetch("http://localhost:5000/getsubjects", {
+          headers: {
+            "Accept": "application/json",
+            "Authorization": "Bearer " + localStorage.getItem("token")
+          }
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch subjects");
+        }
+        const data = await response.json();
+        this.subjects = data.subjects;
+      } catch (error) {
+        console.error("Error fetching subjects:", error);
+      }
+    },
+    async fetchCounts() {
+      try {
+        const response = await fetch("http://localhost:5000/getcounts", {
+          headers: {
+            "Accept": "application/json",
+            "Authorization": "Bearer " + localStorage.getItem("token")
+          }
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch counts");
+        }
+        const data = await response.json();
+        this.counts = data;
+      } catch (error) {
+        console.error("Error fetching counts:", error);
+      }
+    },
+    logout() {
+      localStorage.removeItem("token");
+      this.$router.push("/login");
+    },
+    goToSubject(subjectId) {
+      this.$router.push(`/admindash/subject/${subjectId}`);
+    },
+    goToAddChapter(subjectId) {
+      this.$router.push(`/admindash/subject/${subjectId}/addchapter`);
+    },
+    goToAllSubjects() {
+      this.$router.push("/admindash/subjects");
+    }
+  }
+};
+</script>

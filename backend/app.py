@@ -35,7 +35,9 @@ db = SQLAlchemy()
 api=Api(app)
 
 jwt =JWTManager(app)
-
+@jwt.invalid_token_loader
+def invalid_token_callback(error_string):
+    return jsonify({"msg": "Invalid token: " + error_string}), 422
 db.init_app(app)
 
 #make this intosperate file models.py in the future mabye?
@@ -124,15 +126,15 @@ class LoginResource(Resource):
     @cross_origin(origins="http://localhost:5173")
     def post(self):
         data = request.get_json()
-        email = data['email']
-        password = data['password']
+        email = data.get('email')
+        password = data.get('password')
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password_hash, password):
-            access_token = create_access_token(identity=user.username)
-            response = jsonify({"msg":"successfully logged in", "token": access_token})
-            return make_response(response, 401)
-        response = jsonify({"msg": "email or password incorrect."})
-        return make_response(response, 200)
+            access_token = create_access_token(identity=str(user.id)) 
+            response = jsonify({"msg": "Successfully logged in", "token": access_token})
+            return make_response(response, 200)
+        response = jsonify({"msg": "Email or password incorrect."})
+        return make_response(response, 401)
 
 class AdminLoginResource(Resource):
     @cross_origin(origins="http://localhost:5173")
@@ -683,6 +685,26 @@ class CreateQuestion(Resource):
 
 ########################################################             ADMIN DONE               ###############################################################
 ##################################         USERS: TAKE QUESTIONS, EVALUATE QUESTIONS, GET SUB CHAPTERS,AND QUIZ            ##############################################
+class GetUserSubjects(Resource):
+    @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
+    def get(self):
+        user_id = get_jwt_identity()
+        print(user_id)
+
+        sql = text("""
+            SELECT s.id AS id, COALESCE(CAST(s.name AS TEXT), 'nosub') AS name
+            FROM usersubject AS us
+            JOIN subject AS s ON s.id = us.subject_id
+            WHERE us.user_id = :user_id
+        """)
+
+        result = db.session.execute(sql, {"user_id": user_id}).fetchall()
+
+        subjects = [{"id": row.id, "name": row.name} for row in result]
+        print(subjects, "there is ")
+        return jsonify({"subjects": subjects})
+
 
 
 
@@ -762,6 +784,7 @@ api.add_resource(DeleteQuestion, "/deletequestion/<int:question_id>")
 api.add_resource(GetQuestions,"/getquestion/<int:quiz_id>")
 api.add_resource(GetCounts,"/getcounts")
 api.add_resource(SubjectStats,"/subjectstats")
+api.add_resource(GetUserSubjects,"/getus")
 
 
 if __name__ == '__main__':
