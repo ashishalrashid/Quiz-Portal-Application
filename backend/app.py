@@ -688,7 +688,6 @@ class GetUserSubjects(Resource):
     @cross_origin(origins="http://localhost:5173")
     def get(self):
         user_id = get_jwt_identity()
-        print(user_id)
 
         sql = text("""
             SELECT s.id AS id, COALESCE(CAST(s.name AS TEXT), 'nosub') AS name
@@ -700,7 +699,6 @@ class GetUserSubjects(Resource):
         result = db.session.execute(sql, {"user_id": user_id}).fetchall()
 
         subjects = [{"id": row.id, "name": row.name} for row in result]
-        print(subjects, "there is ")
         return jsonify({"subjects": subjects})
 
 class GetUserQuizzes(Resource):
@@ -736,6 +734,46 @@ class GetUserQuizzes(Resource):
             })
         return jsonify({"quizzes": quizzes})
 
+class CreateUserSubject(Resource):
+    @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
+    def post(self, subject_id):
+        user_id = get_jwt_identity()
+        check_sql = text("""
+            SELECT id FROM usersubject
+            WHERE subject_id = :subject_id AND user_id = :user_id
+        """)
+        existing = db.session.execute(check_sql, {"subject_id": subject_id, "user_id": user_id}).fetchone()
+        if existing:
+            return jsonify({"msg": "UserSubject already exists"}), 200
+        sql = text("""
+            INSERT INTO usersubject (subject_id, user_id)
+            VALUES (:subject_id, :user_id)
+        """)
+        db.session.execute(sql, {"subject_id": subject_id, "user_id": user_id})
+        db.session.commit()
+        return jsonify({"msg": "UserSubject created successfully"}), 201
+
+class GetOtherSubjects(Resource):
+    @cross_origin(origins="http://localhost:5173")
+    @jwt_required()
+    def get(self):
+        user_id = get_jwt_identity()
+        sql = text("""
+            SELECT s.id, s.name, s.description
+            FROM subject s
+            WHERE s.id NOT IN (
+                SELECT us.subject_id
+                FROM usersubject us
+                WHERE us.user_id = :user_id
+            )
+        """)
+        result = db.session.execute(sql, {"user_id": user_id}).fetchall()
+        subjects_data = [
+            {"id": row.id, "name": row.name, "description": row.description}
+            for row in result
+        ]
+        return jsonify({"subjects": subjects_data}), 200
 
 
 ########################################################             CRUD  DONE               ###############################################################
@@ -816,6 +854,8 @@ api.add_resource(GetCounts,"/getcounts")
 api.add_resource(SubjectStats,"/subjectstats")
 api.add_resource(GetUserSubjects,"/getus")
 api.add_resource(GetUserQuizzes,"/getuserquizzes/<int:subject_id>")
+api.add_resource(CreateUserSubject,"/createusersubject/<int:subject_id>")
+api.add_resource(GetOtherSubjects,"/getothersubjects")
 
 if __name__ == '__main__':
     app.run(debug=True)

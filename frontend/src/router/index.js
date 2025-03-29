@@ -19,6 +19,7 @@ import viewusers from '../views/viewusers.vue';
 import stats from '../views/stats.vue';
 import userdash from '../views/userdash.vue';
 import usubjects from '../views/usubjects.vue';
+import uallsubs from '../views/uallsubs.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -42,7 +43,8 @@ const router = createRouter({
         { path: '/admindash/user', name: 'viewuser', component: viewusers },
         { path: '/admindash/stats', name: 'stats', component: stats },
         { path: '/userdash', name: 'userdash', component: userdash },
-        { path: '/usubject/:subject_id', name: 'usubjects', component: usubjects }
+        { path: '/usubject/:subject_id', name: 'usubjects', component: usubjects },
+        { path: '/uallsubjects', name: 'uallsubs', component: uallsubs }
     ]
 });
 

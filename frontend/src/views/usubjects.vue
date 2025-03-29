@@ -2,10 +2,10 @@
     <div class="container">
       <!-- Sidebar / Dashboard -->
       <div class="user-dashboard">
-        <RouterLink to="/userdash" class="disabled">
+        <RouterLink to="/userdash" class="icon">
           <i class="fas fa-home"> Home</i>
         </RouterLink>
-        <RouterLink to="/subjects" class="icon">
+        <RouterLink to="/uallsubjects" class="icon">
           <i class="fas fa-book circular-icon"> All Subjects</i>
         </RouterLink>
         <RouterLink to="/yourperformance" class="icon">

@@ -4,7 +4,7 @@
       <RouterLink to="/userdash" class="disabled">
         <i class="fas fa-home"> Home</i>
       </RouterLink>
-      <RouterLink to="/subjects" class="icon">
+      <RouterLink to="/uallsubjects" class="icon">
         <i class="fas fa-book circular-icon"> All Subjects</i>
       </RouterLink>
       <RouterLink to="/yourperformance" class="icon">
