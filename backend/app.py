@@ -9,6 +9,9 @@ from datetime import timedelta, date
 from flask_cors import cross_origin
 from sqlalchemy import text
 import os
+from flask_caching import Cache
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -24,15 +27,26 @@ except OSError:
 
 CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
 
-app.config.from_mapping(
-    CORS_HEADERS=['Content-Type', 'Authorization'],
-    SQLALCHEMY_DATABASE_URI="sqlite:///" + os.path.join(app.instance_path, "db.sqlite3"),
-    JWT_SECRET_KEY='super-secret',
-    JWT_ACCESS_TOKEN_EXPIRES=timedelta(days=1)
-)
+app.config.from_mapping({
+    "CORS_HEADERS": ['Content-Type', 'Authorization'],
+    "SQLALCHEMY_DATABASE_URI": "sqlite:///" + os.path.join(app.instance_path, "db.sqlite3"),
+    "JWT_SECRET_KEY": 'super-secret',
+    "JWT_ACCESS_TOKEN_EXPIRES": timedelta(days=1),
+    "CACHE_TYPE": "redis",
+    "CACHE_REDIS_URL": "redis://localhost:6379/0"
+})
+
 
 db = SQLAlchemy()
 api=Api(app)
+
+cache = Cache(app)
+
+limiter = Limiter(
+    app,
+    key_func=get_remote_address,
+    default_limits=["2000 per day", "500 per hour"] 
+)
 
 jwt =JWTManager(app)
 @jwt.invalid_token_loader
@@ -124,6 +138,8 @@ with app.app_context():
 
 class LoginResource(Resource):
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def post(self):
         data = request.get_json()
         email = data.get('email')
@@ -138,6 +154,8 @@ class LoginResource(Resource):
 
 class AdminLoginResource(Resource):
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def post(self):
         data = request.get_json()
         username = data['username'] 
@@ -155,6 +173,8 @@ class AdminLoginResource(Resource):
     
 class Signup(Resource):
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def post(self):
         data = request.get_json()
         username = data.get('username')
@@ -180,6 +200,8 @@ class Signup(Resource):
 class CreateSubject(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def post(self):
         identity = get_jwt_identity()
         if identity != "admin":
@@ -202,6 +224,8 @@ class CreateSubject(Resource):
 class EditSubject(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def put(self, subject_id):
         identity = get_jwt_identity()
         if identity != "admin":
@@ -243,6 +267,8 @@ class EditSubject(Resource):
 class DeleteSubject(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def delete(self, subject_id):
         if get_jwt_identity() != "admin":
             return jsonify({"msg": "Only admin can delete subjects"}), 403
@@ -256,6 +282,8 @@ class DeleteSubject(Resource):
 class GetSubject(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def get(self):
         subjects = Subject.query.all()
         subjects_data = [
@@ -269,6 +297,8 @@ class GetSubject(Resource):
 class GetUsers(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def get(self):
         if get_jwt_identity() != "admin":
             return jsonify({"msg": "Only admin can view users"}), 403
@@ -290,6 +320,8 @@ class GetUsers(Resource):
 class EditUser(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def put(self, user_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
@@ -340,6 +372,8 @@ class EditUser(Resource):
 class DeleteUser(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def delete(self, user_id):
         if get_jwt_identity() != "admin":
             return jsonify({"msg": "Only admin can delete users"}), 403
@@ -359,6 +393,8 @@ class DeleteUser(Resource):
 class GetChapter(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def get(self, subject_id):
         chapters = db.session.execute(
             db.text("SELECT * FROM chapter WHERE subject_id = :subject_id"),
@@ -372,6 +408,8 @@ class GetChapter(Resource):
 class CreateChapter(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def post(self, subject_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
@@ -392,6 +430,8 @@ class CreateChapter(Resource):
 class EditChapter(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def put(self, chapter_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
@@ -416,6 +456,8 @@ class EditChapter(Resource):
 class DeleteChapter(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def delete(self, chapter_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
@@ -438,6 +480,8 @@ class DeleteChapter(Resource):
 class GetQuiz(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def get(self, chapter_id):
         quizzes = db.session.execute(
             db.text("""
@@ -469,6 +513,8 @@ class GetQuiz(Resource):
 class CreateQuiz(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def post(self, chapter_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
@@ -497,6 +543,8 @@ class CreateQuiz(Resource):
 class EditQuiz(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def put(self, quiz_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
@@ -554,6 +602,8 @@ class EditQuiz(Resource):
 class DeleteQuiz(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def delete(self, quiz_id):
         if get_jwt_identity() != "admin":
             return {"msg": "not admin"}, 403
@@ -576,6 +626,8 @@ class DeleteQuiz(Resource):
 class EditQuestion(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def put(self, question_id):
         if get_jwt_identity() != "admin":
             return {"msg": "Not authorized"}, 403
@@ -617,6 +669,8 @@ class EditQuestion(Resource):
 class DeleteQuestion(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def delete(self, question_id):
         if get_jwt_identity() != "admin":
             return {"msg": "Not authorized"}, 403
@@ -649,6 +703,8 @@ class GetQuestions(Resource):
 class CreateQuestion(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def post(self, quiz_id):
         if get_jwt_identity() != "admin":
             return {"msg": "Not authorized"}, 403
@@ -686,6 +742,8 @@ class CreateQuestion(Resource):
 class GetUserSubjects(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def get(self):
         user_id = get_jwt_identity()
 
@@ -704,6 +762,8 @@ class GetUserSubjects(Resource):
 class GetUserQuizzes(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def get(self,subject_id):
         today = date.today()
         sql = text("""
@@ -737,6 +797,8 @@ class GetUserQuizzes(Resource):
 class CreateUserSubject(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def post(self, subject_id):
         user_id = get_jwt_identity()
         check_sql = text("""
@@ -757,6 +819,8 @@ class CreateUserSubject(Resource):
 class GetOtherSubjects(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def get(self):
         user_id = get_jwt_identity()
         sql = text("""
@@ -778,6 +842,8 @@ class GetOtherSubjects(Resource):
 class userGetQuiz(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def get(self, quiz_id):
         query = text("""
             SELECT q.*, qi.time_duration
@@ -804,6 +870,8 @@ class userGetQuiz(Resource):
 class SubmitScore(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def post(self, quiz_id):
         user_id = get_jwt_identity()
         data = request.get_json()
@@ -850,6 +918,8 @@ class SubmitScore(Resource):
 class UrPerformance(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def get(self):
         user_id = get_jwt_identity()
         sql = text("""
@@ -876,6 +946,8 @@ class UrPerformance(Resource):
 class GetCounts(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def get(self):
         user_result = db.session.execute(text("SELECT COUNT(*) as count FROM user")).fetchone()
         user_count = user_result[0] if user_result else 0
@@ -899,6 +971,8 @@ class GetCounts(Resource):
 class SubjectStats(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
     def get(self):
         sql = text("""
             SELECT s.id, s.name,
