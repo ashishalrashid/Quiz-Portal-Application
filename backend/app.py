@@ -847,6 +847,27 @@ class SubmitScore(Resource):
         return jsonify({"msg": "Success"}), 201
 
 
+class UrPerformance(Resource):
+    @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
+    def get(self):
+        user_id = get_jwt_identity()
+        sql = text("""
+            SELECT s.name AS subject_name, c.name AS chapter_name, q.name AS quiz_name, sc.score
+            FROM scores sc
+            JOIN quiz q ON sc.quiz_id = q.id
+            JOIN chapter c ON q.chapter_id = c.id
+            JOIN subject s ON c.subject_id = s.id
+            WHERE sc.user_id = :user_id
+        """)
+        result = db.session.execute(sql, {"user_id": user_id}).fetchall()
+        performance = [{
+            "subject_name": row.subject_name,
+            "chapter_name": row.chapter_name,
+            "quiz_name": row.quiz_name,
+            "score": row.score
+        } for row in result]
+        return jsonify({"performance": performance})
 
 
 ########################################################             CRUD  DONE               ###############################################################
@@ -931,6 +952,7 @@ api.add_resource(CreateUserSubject,"/createusersubject/<int:subject_id>")
 api.add_resource(GetOtherSubjects,"/getothersubjects")
 api.add_resource(SubmitScore,"/submitscore/<int:quiz_id>")
 api.add_resource(userGetQuiz,"/usergetquiz/<int:quiz_id>")
+api.add_resource(UrPerformance,"/yourperformance")
 
 if __name__ == '__main__':
     app.run(debug=True)

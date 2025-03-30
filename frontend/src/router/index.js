@@ -21,6 +21,7 @@ import userdash from '../views/userdash.vue';
 import usubjects from '../views/usubjects.vue';
 import uallsubs from '../views/uallsubs.vue';
 import takequiz from '../views/takequiz.vue';
+import yourperformance from '../views/yourperformance.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -47,6 +48,7 @@ const router = createRouter({
         { path: '/usubject/:subject_id', name: 'usubjects', component: usubjects },
         { path: '/uallsubjects', name: 'uallsubs', component: uallsubs },
         { path: '/takequiz/:quiz_id', name: 'takequiz', component: takequiz },
+        { path: '/yourperformance', name: 'urperfromance', component: yourperformance }
     ]
 });
 
