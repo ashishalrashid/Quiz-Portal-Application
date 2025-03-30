@@ -61,6 +61,7 @@
     methods: {
       async fetchQuiz() {
         try {
+          await this.fetchQuiz();
           const quizId = this.$route.params.quiz_id;
           const token = localStorage.getItem("token");
           const response = await axios.get(`http://localhost:5000/getquiz/${quizId}`, {
@@ -96,7 +97,7 @@
             }
           });
           console.log("Quiz updated successfully:", response.data);
-          this.$router.push(`/chapter/${this.chapterId}`);
+          this.$router.push(`/admindash`);
         } catch (error) {
           console.error("Error updating quiz:", error);
         }
