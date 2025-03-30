@@ -521,32 +521,42 @@ class GetQuiz(Resource):
     @limiter.limit("100 per minute")
     @cache.cached(timeout=300, query_string=True)
     def get(self, chapter_id):
-        quizzes = db.session.execute(
-            db.text("""
+        try:
+            query = text("""
                 SELECT id, name, chapter_id, start_date, end_date, time_duration 
                 FROM quiz
                 WHERE chapter_id = :chapter_id
-            """),
-            {"chapter_id": chapter_id}
-        ).fetchall()
-        
-        if not quizzes:
-            return {"msg": "No quizzes found"}, 404
-        
-        quizzes_list = []
-        base = datetime(1970, 1, 1)
-        for q in quizzes:
-            q_dict = dict(q._mapping)
-            if isinstance(q_dict["time_duration"], str):
-                dt = datetime.strptime(q_dict["time_duration"], "%Y-%m-%d %H:%M:%S.%f")
-                q_dict["time_duration"] = int((dt - base).total_seconds() // 60)
-            elif hasattr(q_dict["time_duration"], "total_seconds"):
-                q_dict["time_duration"] = int(q_dict["time_duration"].total_seconds() // 60)
-            else:
-                q_dict["time_duration"] = int(q_dict["time_duration"])
-            quizzes_list.append(q_dict)
+            """)
+            result = db.session.execute(query, {"chapter_id": chapter_id}).fetchall()
 
-        return {"quizzes": quizzes_list}, 200
+            if not result:
+                return jsonify({"quizzes": []}), 200  # Return empty list instead of 404
+            
+            quizzes_list = []
+            base = datetime(1970, 1, 1)
+
+            for row in result:
+                q_dict = dict(row._mapping)
+
+                # Convert time_duration
+                if isinstance(q_dict["time_duration"], str):
+                    try:
+                        dt = datetime.strptime(q_dict["time_duration"], "%Y-%m-%d %H:%M:%S.%f")
+                        q_dict["time_duration"] = int((dt - base).total_seconds() // 60)
+                    except ValueError:
+                        q_dict["time_duration"] = None  # Set as None if format is invalid
+                elif hasattr(q_dict["time_duration"], "total_seconds"):
+                    q_dict["time_duration"] = int(q_dict["time_duration"].total_seconds() // 60)
+                else:
+                    q_dict["time_duration"] = int(q_dict["time_duration"]) if q_dict["time_duration"] else None
+
+                quizzes_list.append(q_dict)
+
+            return jsonify({"quizzes": quizzes_list}), 200
+
+        except Exception as e:
+            print(f"Error in GetQuiz: {e}")
+            return jsonify({"error": "Internal Server Error"}), 500
 
 class GetSearchQuiz(Resource):
     @cross_origin(origins="http://localhost:5173")
@@ -649,7 +659,6 @@ class EditQuiz(Resource):
         except Exception:
             return {"msg": "Invalid date or duration format"}, 400
 
-        # Build update query dynamically
         update_fields = [
             "name = :name",
             "start_date = :start_date",
@@ -805,13 +814,12 @@ class CreateQuestion(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
     @limiter.limit("100 per minute")
-    @cache.cached(timeout=300, query_string=True)
     def post(self, quiz_id):
         if get_jwt_identity() != "admin":
             return {"msg": "Not authorized"}, 403
         data = request.get_json()
         if not isinstance(data, dict):
-            return {"msg": "Invalid data format"}, 400
+            return {"msg": "Invalid data format"}, 400    
         question_text = data.get("question")
         option1 = data.get("option1")
         option2 = data.get("option2")
@@ -820,23 +828,36 @@ class CreateQuestion(Resource):
         answer = data.get("answer")
         if not all([question_text, option1, option2, option3, option4, answer]):
             return {"msg": "Missing required fields"}, 400
-        db.session.execute(
-            db.text("""
-                INSERT INTO questions (question, option1, option2, option3, option4, answer, quiz_id)
-                VALUES (:question, :option1, :option2, :option3, :option4, :answer, :quiz_id)
-            """),
-            {
-                "question": question_text,
-                "option1": option1,
-                "option2": option2,
-                "option3": option3,
-                "option4": option4,
-                "answer": answer,
-                "quiz_id": quiz_id
-            }
-        )
-        db.session.commit()
-        return {"msg": "Question created successfully"}, 201
+        try:
+            quiz_check = db.session.execute(db.text("SELECT id FROM quiz WHERE id = :quiz_id"), {"quiz_id": quiz_id}).fetchone()
+            if not quiz_check:
+                return {"msg": "Quiz ID not found"}, 404
+
+            db.session.execute(
+                db.text("""
+                    INSERT INTO questions (question, option1, option2, option3, option4, answer, quiz_id)
+                    VALUES (:question, :option1, :option2, :option3, :option4, :answer, :quiz_id)
+                """),
+                {
+                    "question": question_text,
+                    "option1": option1,
+                    "option2": option2,
+                    "option3": option3,
+                    "option4": option4,
+                    "answer": answer,
+                    "quiz_id": quiz_id
+                }
+            )
+
+            db.session.flush() 
+            db.session.commit()
+            return {"msg": "Question created successfully"}, 201
+
+        except Exception as e:
+            db.session.rollback() 
+            print(f"Error creating question: {e}")
+            return {"msg": "Internal Server Error", "error": str(e)}, 500
+
 
 ########################################################             ADMIN DONE               ###############################################################
 ##################################         USERS: TAKE QUESTIONS, EVALUATE QUESTIONS, GET SUB CHAPTERS,AND QUIZ            ##############################################
@@ -894,6 +915,53 @@ class GetUserQuizzes(Resource):
                 "duration": duration
             })
         return jsonify({"quizzes": quizzes})
+    
+class SearchUserQuizzes(Resource):
+    @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
+    @limiter.limit("100 per minute")
+    @cache.cached(timeout=300, query_string=True)
+    def post(self, subject_id):
+        """Search quizzes by name within a subject"""
+        today = date.today()
+        data = request.get_json() or {}
+        pattern = data.get("pattern", "").strip()
+
+        sql = text("""
+            SELECT q.id, q.name AS quiz_name, c.name AS chapter_name,
+                   q.start_date, q.end_date, q.time_duration
+            FROM quiz q
+            JOIN chapter c ON q.chapter_id = c.id
+            WHERE q.end_date >= :today
+                   AND c.subject_id = :subject_id
+                   AND q.start_date <= :today
+        """)
+
+        result = db.session.execute(sql, {"subject_id": subject_id, "today": today}).fetchall()
+        quizzes = []
+
+        for row in result:
+            duration = None
+            if row.time_duration:
+                try:
+                    duration = int(row.time_duration.total_seconds() // 60)
+                except Exception:
+                    duration = row.time_duration
+
+            quiz_data = {
+                "id": row.id,
+                "quiz_name": row.quiz_name,
+                "chapter_name": row.chapter_name,
+                "start_date": row.start_date,
+                "end_date": row.end_date,
+                "duration": duration
+            }
+            quizzes.append(quiz_data)
+
+        if pattern:
+            quizzes = [q for q in quizzes if re.search(pattern, q["quiz_name"], re.IGNORECASE)]
+
+        return jsonify({"quizzes": quizzes}), 200
 
 class CreateUserSubject(Resource):
     @jwt_required()
@@ -939,6 +1007,36 @@ class GetOtherSubjects(Resource):
             for row in result
         ]
         return jsonify({"subjects": subjects_data}), 200
+    
+class GetSearchOtherSubjects(Resource):
+    @cross_origin(origins="http://localhost:5173")
+    @jwt_required()
+    @limiter.limit("100 per minute")
+    def post(self):
+        user_id = get_jwt_identity()
+        data = request.get_json() or {}
+        pattern = data.get("pattern", "").strip()
+
+        sql = text("""
+            SELECT s.id, s.name, s.description
+            FROM subject s
+            WHERE s.id NOT IN (
+                SELECT us.subject_id
+                FROM usersubject us
+                WHERE us.user_id = :user_id
+            )
+        """)
+        result = db.session.execute(sql, {"user_id": user_id}).fetchall()
+
+        subjects_data = [
+            {"id": row.id, "name": row.name, "description": row.description}
+            for row in result
+        ]
+
+        if pattern:
+            subjects_data = [s for s in subjects_data if re.search(pattern, s["name"], re.IGNORECASE)]
+
+        return jsonify({"subjects": subjects_data}), 200
 
 class userGetQuiz(Resource):
     @jwt_required()
@@ -967,6 +1065,7 @@ class userGetQuiz(Resource):
                 q_dict.pop("time_duration", None)
                 questions.append(q_dict)
         return jsonify({"questions": questions, "duration": duration}), 200
+
 
 class SubmitScore(Resource):
     @jwt_required()
@@ -1132,6 +1231,8 @@ api.add_resource(GetSearchSubject, "/getsearchsubject")
 api.add_resource(GetSearchUser, "/getsearchuser")
 api.add_resource(GetSearchQuiz, "/getsearchquiz/<int:chapter_id>")
 api.add_resource(GetSearchQuestions, "/getsearchquestions/<int:quiz_id>")
+api.add_resource(GetSearchOtherSubjects,"/getsearchothersubjects")
+api.add_resource(SearchUserQuizzes,"/searchuserquizzes/<int:subject_id>")
 
 if __name__ == '__main__':
     app.run(debug=True)

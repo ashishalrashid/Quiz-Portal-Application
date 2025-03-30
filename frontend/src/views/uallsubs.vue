@@ -17,6 +17,11 @@
     <div class="subcontainer">
       <div class="top">
             <h2>All Subjects</h2>
+            <input type="text" v-model="searchQuery" placeholder="Search..." class="field"/>
+    
+    <button @click="searchOtherSubjects" class="search-btn">
+        <i class="fas fa-search"></i> Search
+    </button>
           </div>
     <ul class="subs">
       <li 
@@ -70,6 +75,29 @@ export default {
         console.error("Error fetching subjects:", error);
       }
     },
+    async searchOtherSubjects() {
+    try {
+        const token = localStorage.getItem("token");
+        const response = await fetch("http://localhost:5000/getsearchothersubjects", {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ pattern: this.searchQuery })
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch subjects");
+        }
+
+        const data = await response.json();
+        this.subjects = data.subjects; 
+    } catch (error) {
+        console.error("Error searching subjects:", error);
+    }
+},
     logout() {
       localStorage.removeItem("token");
       this.$router.push("/login");

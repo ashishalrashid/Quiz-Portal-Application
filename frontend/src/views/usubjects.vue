@@ -15,7 +15,14 @@
         </a>
       </div>
       <div class="subcontainer">
+        <div class="top">
         <h2>Active Quizzes</h2>
+        <input type="text" v-model="searchQuery" placeholder="Search quizzes..." class="field"/>
+
+    <button @click="searchQuizzes" class="search-btn">
+        <i class="fas fa-search"></i> Search
+    </button>
+      </div>
         <table class="quiz-table">
           <thead>
             <tr>
@@ -73,6 +80,31 @@
           console.error("Error fetching active quizzes:", error);
         }
       },
+      async searchQuizzes() {
+    try {
+        const token = localStorage.getItem("token");
+        const subjectId = this.$route.params.subject_id;
+        const response = await fetch(`http://localhost:5000/searchuserquizzes/${subjectId}`, {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ pattern: this.searchQuery })
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch quizzes");
+        }
+
+        const data = await response.json();
+        this.quizzes = data.quizzes;
+    } catch (error) {
+        console.error("Error searching quizzes:", error);
+    }
+},
+
       goToQuiz(quizId) {
         this.$router.push(`/takequiz/${quizId}`);
       },
