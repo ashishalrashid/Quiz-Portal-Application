@@ -17,8 +17,16 @@
           <i class="fas fa-sign-out-alt"> Log Out</i>
         </a>
       </div>
-      <div class="subcontainer">
-        <h2>Users</h2>
+      <div class="acont">
+      <div class="top">
+    <h2>Users</h2>
+    <input type="text" v-model="searchQuery" placeholder="Search users..." class="field"/>
+    <button @click="searchUsers" class="search-btn">
+        <i class="fas fa-search"></i> Search
+    </button>
+</div>
+
+        
         <table class="user-table">
           <thead>
             <tr>
@@ -90,6 +98,29 @@
           console.error("Error deleting user:", error);
         }
       },
+      async searchUsers() {
+  try {
+    const response = await fetch("http://localhost:5000/getsearchuser", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + localStorage.getItem("token")
+      },
+      body: JSON.stringify({ pattern: this.searchQuery })
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to search users");
+    }
+
+    const data = await response.json();
+    this.users = data.users;
+  } catch (error) {
+    console.error("Error searching users:", error);
+  }
+},
+
       logout() {
         localStorage.removeItem("token");
         this.$router.push("/login");
@@ -165,6 +196,11 @@
     padding: 5px 10px;
     cursor: pointer;
     border-radius: 5px;
+  }
+  .acont{
+    display: flex;
+    flex-direction: column;
+    margin: auto;
   }
   </style>
   

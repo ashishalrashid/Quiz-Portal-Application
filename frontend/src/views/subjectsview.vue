@@ -25,6 +25,10 @@
             >
                 <i class="fas fa-plus-circle"> Add Subject</i>
             </RouterLink>
+            <input type="text" v-model="searchQuery" placeholder="Search..." class="field"/>
+            <button @click="searchSubjects" class="search-btn">
+            <i class="fas fa-search"></i>
+      </button>
           </div>
     <ul class="subs">
       <li 
@@ -88,6 +92,28 @@ export default {
     goToEditSubject(subjectId) {
       this.$router.push(`/editsubject/${subjectId}`);
     },
+    async searchSubjects() {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch("http://localhost:5000/getsearchsubject", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ pattern: this.searchQuery })
+    });
+    if (!response.ok) {
+      throw new Error("Failed to search subjects");
+    }
+    const data = await response.json();
+    this.subjects = data.subjects;
+  } catch (error) {
+    console.error("Error searching subjects:", error);
+  }
+},
+
     async deleteSubject(subjectId) {
       try {
         const response = await fetch(`http://localhost:5000/deletesubject/${subjectId}`, {
@@ -214,5 +240,21 @@ html, body, #app {
 }
 .gwak{
   font-size: 30px !important;
+}
+.field{
+  border-radius: 25px;
+  border: #000000 solid 1px;
+  padding: 5px;
+}
+.search-btn{
+  border-radius:25px ;
+  border: none;
+  padding: 10px;
+  color: #ffffff;
+  background-color:#003f54 ;
+}
+.search-btn:hover{
+  background-color: #000000;
+  transform: scale(1.1);
 }
 </style>

@@ -18,7 +18,13 @@
         </a>
       </div>
       <div class="subcontainer">
+        <div class="top">
         <h2>Questions</h2>
+        <input type="text" v-model="searchQuery" placeholder="Search..." class="field" />
+        <button @click="searchQuestions" class="search-btn">
+          <i class="fas fa-search"></i>
+        </button>
+      </div>
         <table class="question-table">
           <thead>
             <tr>
@@ -105,6 +111,30 @@
           console.error("Error deleting question:", error);
         });
       },
+      async searchQuestions() {
+  const quizId = this.$route.params.quiz_id;
+  try {
+    const response = await fetch(`http://localhost:5000/getsearchquestions/${quizId}`, {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + localStorage.getItem("token")
+      },
+      body: JSON.stringify({ pattern: this.searchQuery })
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to search questions");
+    }
+
+    const data = await response.json();
+    this.questions = data.questions;
+  } catch (error) {
+    console.error("Error searching questions:", error);
+  }
+},
+
 
       goToCreateQuestion() {
         const quizId = this.$route.params.quiz_id;

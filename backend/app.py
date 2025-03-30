@@ -12,6 +12,7 @@ import os
 from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import re
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -43,10 +44,11 @@ api=Api(app)
 cache = Cache(app)
 
 limiter = Limiter(
-    app,
-    key_func=get_remote_address,
-    default_limits=["2000 per day", "500 per hour"] 
+    get_remote_address,
+    default_limits=["2000 per day", "500 per hour"]
 )
+
+limiter.init_app(app)
 
 jwt =JWTManager(app)
 @jwt.invalid_token_loader
@@ -162,7 +164,7 @@ class AdminLoginResource(Resource):
         password = data['password']
         
         admin = Admin.query.filter_by(username=username).first()
-
+        print(admin)
         if admin and check_password_hash(admin.password_hash, password):
             access_token = create_access_token(identity=admin.username)
             response = jsonify({"msg": "Admin login successful", "token": access_token})
@@ -291,6 +293,21 @@ class GetSubject(Resource):
             for subject in subjects
         ]
         return jsonify({"subjects": subjects_data}), 200
+    
+class GetSearchSubject(Resource):
+    @cross_origin(origins="http://localhost:5173")
+    @jwt_required()
+    def post(self):
+        data = request.get_json() or {}
+        pattern = data.get("pattern", "")
+        subjects = Subject.query.all()
+        if pattern:
+            matched = [subject for subject in subjects if re.search(pattern, subject.name, re.IGNORECASE)]
+        else:
+            matched = subjects
+        subjects_data = [{"id": subject.id, "name": subject.name, "description": subject.description} for subject in matched]
+        return jsonify({"subjects": subjects_data}), 200
+
 ########################################################        CRUD FOR SUBJECTS DONE        ###############################################################
 ########################################################        CRUD FOR   USERS              ###############################################################
 
@@ -317,6 +334,27 @@ class GetUsers(Resource):
         ]
         return jsonify(user_list)
     
+class GetSearchUser(Resource):
+    @cross_origin(origins="http://localhost:5173")
+    @jwt_required()
+    def post(self):
+        data = request.get_json() or {}
+        pattern = data.get("pattern", "")
+        users = User.query.all()
+        if pattern:
+            matched = [user for user in users if re.search(pattern, user.username, re.IGNORECASE)]
+        else:
+            matched = users
+        users_data = [{
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "full_name": user.full_name,
+            "qualification": user.qualification,
+            "dob": user.dob.strftime("%Y-%m-%d") if user.dob else None
+        } for user in matched]
+        return jsonify({"users": users_data}), 200
+
 class EditUser(Resource):
     @cross_origin(origins="http://localhost:5173")
     @jwt_required()
@@ -510,6 +548,38 @@ class GetQuiz(Resource):
 
         return {"quizzes": quizzes_list}, 200
 
+class GetSearchQuiz(Resource):
+    @cross_origin(origins="http://localhost:5173")
+    @jwt_required()
+    def post(self, chapter_id):
+        data = request.get_json() or {}
+        pattern = data.get("pattern", "").strip()
+
+        quizzes = db.session.execute(
+            text("""
+                SELECT id, name, chapter_id, start_date, end_date, time_duration 
+                FROM quiz
+                WHERE chapter_id = :chapter_id
+            """),
+            {"chapter_id": chapter_id}
+        ).fetchall()
+
+        quizzes_list = [
+            {
+                "id": q.id,
+                "name": q.name,
+                "chapter_id": q.chapter_id,
+                "start_date": q.start_date,
+                "end_date": q.end_date,
+                "time_duration": q.time_duration
+            }
+            for q in quizzes
+        ]
+        if pattern:
+            quizzes_list = [q for q in quizzes_list if re.search(re.escape(pattern), q["name"], re.IGNORECASE)]
+
+        return jsonify({"quizzes": quizzes_list}), 200
+
 class CreateQuiz(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
@@ -699,6 +769,37 @@ class GetQuestions(Resource):
             "options": [q.option1, q.option2, q.option3, q.option4],
             "answer": q.answer
         } for q in questions], 200
+
+class GetSearchQuestions(Resource):
+    @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
+    def post(self, quiz_id):
+        data = request.get_json() or {}
+        pattern = data.get("pattern", "").strip()
+
+        questions = db.session.execute(
+            text("""
+                SELECT id, question, option1, option2, option3, option4, answer
+                FROM questions
+                WHERE quiz_id = :quiz_id
+            """),
+            {"quiz_id": quiz_id}
+        ).fetchall()
+
+        questions_list = [
+            {
+                "id": q.id,
+                "question": q.question,
+                "options": [q.option1, q.option2, q.option3, q.option4],
+                "answer": q.answer
+            }
+            for q in questions
+        ]
+
+        if pattern:
+            questions_list = [q for q in questions_list if re.search(pattern, q["question"], re.IGNORECASE)]
+
+        return jsonify({"questions": questions_list}), 200
 
 class CreateQuestion(Resource):
     @jwt_required()
@@ -1027,6 +1128,10 @@ api.add_resource(GetOtherSubjects,"/getothersubjects")
 api.add_resource(SubmitScore,"/submitscore/<int:quiz_id>")
 api.add_resource(userGetQuiz,"/usergetquiz/<int:quiz_id>")
 api.add_resource(UrPerformance,"/yourperformance")
+api.add_resource(GetSearchSubject, "/getsearchsubject")
+api.add_resource(GetSearchUser, "/getsearchuser")
+api.add_resource(GetSearchQuiz, "/getsearchquiz/<int:chapter_id>")
+api.add_resource(GetSearchQuestions, "/getsearchquestions/<int:quiz_id>")
 
 if __name__ == '__main__':
     app.run(debug=True)

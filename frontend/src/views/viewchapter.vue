@@ -23,6 +23,10 @@
                 <button @click="goToCreateQuiz" class="all-subjects">
                     <i class="fas fa-plus-circle"> Add Quiz</i>
                 </button>
+                <input type="text" v-model="searchQuery" placeholder="Search..." class="field"/>
+                <button @click="searchQuizzes" class="search-btn">
+                    <i class="fas fa-search"></i>
+                </button>
             </div>
             <table class="quiz-table">
                 <thead>
@@ -61,7 +65,8 @@ export default {
     name: "Quizzes",
     data() {
         return {
-            quizzes: []
+            quizzes: [],
+            searchQuery: ""
         };
     },
     created() {
@@ -84,6 +89,26 @@ export default {
                 this.quizzes = data.quizzes;
             } catch (error) {
                 console.error("Error fetching quizzes:", error);
+            }
+        },
+        async searchQuizzes() {
+            try {
+                const chapterId = this.$route.params.chapter_id; 
+                const response = await fetch(`http://localhost:5000/getsearchquiz/${chapterId}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + localStorage.getItem("token")
+                    },
+                    body: JSON.stringify({ pattern: this.searchQuery })
+                });
+                if (!response.ok) {
+                    throw new Error("Failed to search quizzes");
+                }
+                const data = await response.json();
+                this.quizzes = data.quizzes;
+            } catch (error) {
+                console.error("Error searching quizzes:", error);
             }
         },
         logout() {
