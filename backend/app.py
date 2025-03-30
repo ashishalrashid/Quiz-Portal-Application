@@ -775,6 +775,42 @@ class GetOtherSubjects(Resource):
         ]
         return jsonify({"subjects": subjects_data}), 200
 
+class SubmitScore(Resource):
+    @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
+    def post(self, quiz_id):
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        score = data.get("score")
+        if score is None:
+            return jsonify({"msg": "Score not provided"}), 400
+
+        # Retrieve quiz start and end dates
+        quiz_sql = text("""
+            SELECT start_date, end_date 
+            FROM quiz 
+            WHERE id = :quiz_id
+        """)
+        quiz = db.session.execute(quiz_sql, {"quiz_id": quiz_id}).fetchone()
+        if not quiz:
+            return jsonify({"msg": "Quiz not found"}), 404
+
+        current_date = date.today()
+        # Check if current_date is within the quiz window (inclusive)
+        if quiz.start_date is None or quiz.end_date is None:
+            return jsonify({"msg": "Quiz schedule is not properly set."}), 500
+
+        if not (quiz.start_date <= current_date <= quiz.end_date):
+            return jsonify({"msg": "Cannot submit score outside the quiz window."}), 403
+
+        sql = text("""
+            INSERT INTO scores (quiz_id, user_id, score)
+            VALUES (:quiz_id, :user_id, :score)
+        """)
+        db.session.execute(sql, {"quiz_id": quiz_id, "user_id": user_id, "score": score})
+        db.session.commit()
+        return jsonify({"msg": "Score submitted successfully"}), 201
+
 
 ########################################################             CRUD  DONE               ###############################################################
 ########################################################             STATS CALC                ###############################################################

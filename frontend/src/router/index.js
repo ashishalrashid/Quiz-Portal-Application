@@ -20,11 +20,12 @@ import stats from '../views/stats.vue';
 import userdash from '../views/userdash.vue';
 import usubjects from '../views/usubjects.vue';
 import uallsubs from '../views/uallsubs.vue';
+import takequiz from '../views/takequiz.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
-        { path: '/', name: 'home', component: Hello },
+        { path: '/', name: 'home', component: Login },
         { path: '/login', name: 'login', component: Login },
         { path: '/signup', name: 'signup', component: Signup },
         { path: '/adminlogin', name: 'adminLogin', component: adminlogin },
@@ -44,7 +45,8 @@ const router = createRouter({
         { path: '/admindash/stats', name: 'stats', component: stats },
         { path: '/userdash', name: 'userdash', component: userdash },
         { path: '/usubject/:subject_id', name: 'usubjects', component: usubjects },
-        { path: '/uallsubjects', name: 'uallsubs', component: uallsubs }
+        { path: '/uallsubjects', name: 'uallsubs', component: uallsubs },
+        { path: '/takequiz/:quiz_id', name: 'takequiz', component: takequiz },
     ]
 });
 
