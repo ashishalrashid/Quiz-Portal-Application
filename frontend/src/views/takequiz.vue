@@ -37,7 +37,7 @@
         currentIndex: 0,
         selectedOption: null,
         score: 0,
-        timeRemaining: 0, 
+        timeRemaining: 0,
         timer: null,
         alertMessage: "",
         isCorrect: false
@@ -61,7 +61,7 @@
         try {
           const token = localStorage.getItem("token");
           const quizId = this.$route.params.quiz_id;
-          const response = await fetch(`http://localhost:5000/getquiz/${quizId}`, {
+          const response = await fetch(`http://localhost:5000/usergetquiz/${quizId}`, {
             headers: {
               "Accept": "application/json",
               "Authorization": "Bearer " + token
@@ -71,10 +71,18 @@
             throw new Error("Failed to fetch quiz");
           }
           const data = await response.json();
-          const quiz = data.quizzes[0];
-          this.questions = quiz.questions || [];
-          this.timeRemaining = (quiz.duration || 0) * 60;
-          this.startTimer();
+  
+          if (data.questions && data.questions.length > 0) {
+            this.questions = data.questions.map(q => ({
+              question: q.question,
+              options: [q.option1, q.option2, q.option3, q.option4],
+              answer: q.answer
+            }));
+            this.timeRemaining = (data.duration || 0) * 60;
+            this.startTimer();
+          } else {
+            console.warn("No questions found for this quiz.");
+          }
         } catch (error) {
           console.error("Error fetching quiz:", error);
         }
@@ -121,8 +129,7 @@
         try {
           const quizId = this.$route.params.quiz_id;
           const token = localStorage.getItem("token");
-          const response = await axios.post(
-            `http://localhost:5000/submitscore/${quizId}`,
+          await axios.post(`http://localhost:5000/submitscore/${quizId}`,
             { score: this.score },
             {
               headers: {
@@ -191,4 +198,3 @@
     color: red;
   }
   </style>
-  

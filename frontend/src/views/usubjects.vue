@@ -1,6 +1,5 @@
 <template>
     <div class="container">
-      <!-- Sidebar / Dashboard -->
       <div class="user-dashboard">
         <RouterLink to="/userdash" class="icon">
           <i class="fas fa-home"> Home</i>
@@ -15,7 +14,6 @@
           <i class="fas fa-sign-out-alt"> Log Out</i>
         </a>
       </div>
-      <!-- Main Content: Active Quizzes Table -->
       <div class="subcontainer">
         <h2>Active Quizzes</h2>
         <table class="quiz-table">
@@ -76,7 +74,7 @@
         }
       },
       goToQuiz(quizId) {
-        this.$router.push(`/quiz/${quizId}`);
+        this.$router.push(`/takequiz/${quizId}`);
       },
       logout() {
         localStorage.removeItem("token");

@@ -775,6 +775,32 @@ class GetOtherSubjects(Resource):
         ]
         return jsonify({"subjects": subjects_data}), 200
 
+class userGetQuiz(Resource):
+    @jwt_required()
+    @cross_origin(origins="http://localhost:5173")
+    def get(self, quiz_id):
+        query = text("""
+            SELECT q.*, qi.time_duration
+            FROM questions AS q
+            JOIN quiz AS qi ON q.quiz_id = qi.id
+            WHERE q.quiz_id = :quiz_id
+        """)
+        result = db.session.execute(query, {"quiz_id": quiz_id}).fetchall()
+        questions = []
+        duration = None
+        if result:
+            first = result[0]._mapping
+            if first.get("time_duration"):
+                try:
+                    duration = int(first["time_duration"].total_seconds() // 60)
+                except Exception:
+                    duration = first["time_duration"]
+            for row in result:
+                q_dict = dict(row._mapping)
+                q_dict.pop("time_duration", None)
+                questions.append(q_dict)
+        return jsonify({"questions": questions, "duration": duration}), 200
+
 class SubmitScore(Resource):
     @jwt_required()
     @cross_origin(origins="http://localhost:5173")
@@ -782,6 +808,9 @@ class SubmitScore(Resource):
         user_id = get_jwt_identity()
         data = request.get_json()
         score = data.get("score")
+        if score is None:
+            return jsonify({"msg": "Score not provided"}), 400
+
         quiz_sql = text("""
             SELECT start_date, end_date 
             FROM quiz 
@@ -791,10 +820,23 @@ class SubmitScore(Resource):
         if not quiz:
             return jsonify({"msg": "Quiz not found"}), 404
 
-        current_date = date.today()
+        quiz_start = quiz.start_date
+        quiz_end = quiz.end_date
 
-        if not (quiz.start_date <= current_date <= quiz.end_date):
-            return jsonify({"msg": "score outside the quiz window"}), 403
+        quiz_start = datetime.strptime(quiz_start, "%Y-%m-%d").date() if isinstance(quiz_start, str) else quiz_start
+        quiz_end = datetime.strptime(quiz_end, "%Y-%m-%d").date() if isinstance(quiz_end, str) else quiz_end
+
+        current_date = date.today()
+        if not (quiz_start <= current_date <= quiz_end):
+            return jsonify({"msg": "Score outside the quiz window"}), 403
+
+        check_sql = text("""
+            SELECT id FROM scores
+            WHERE quiz_id = :quiz_id AND user_id = :user_id
+        """)
+        existing = db.session.execute(check_sql, {"quiz_id": quiz_id, "user_id": user_id}).fetchone()
+        if existing:
+            return jsonify({"msg": "Score already submitted"}), 400
 
         sql = text("""
             INSERT INTO scores (quiz_id, user_id, score)
@@ -802,7 +844,9 @@ class SubmitScore(Resource):
         """)
         db.session.execute(sql, {"quiz_id": quiz_id, "user_id": user_id, "score": score})
         db.session.commit()
-        return jsonify({"msg": "scuess"}), 201
+        return jsonify({"msg": "Success"}), 201
+
+
 
 
 ########################################################             CRUD  DONE               ###############################################################
@@ -885,6 +929,8 @@ api.add_resource(GetUserSubjects,"/getus")
 api.add_resource(GetUserQuizzes,"/getuserquizzes/<int:subject_id>")
 api.add_resource(CreateUserSubject,"/createusersubject/<int:subject_id>")
 api.add_resource(GetOtherSubjects,"/getothersubjects")
+api.add_resource(SubmitScore,"/submitscore/<int:quiz_id>")
+api.add_resource(userGetQuiz,"/usergetquiz/<int:quiz_id>")
 
 if __name__ == '__main__':
     app.run(debug=True)
