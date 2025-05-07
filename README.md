@@ -1,11 +1,3 @@
-ashishalrashid: lets do a read me file in plain readable text ,no need for code stucture 
-
-Workspace: Sorry, I can only assist with filetree directory structures.
-
-ashishalrashid: for the github page lets do a readme file for all the frontend and the backend in plain readable text
-
-Workspace: Collecting workspace information# QuizMaster Project
-
 ## Overview
 QuizMaster is a web-based application designed to manage quizzes, chapters, and subjects. It includes both a **frontend** built with Vue.js and a **backend** powered by Flask. The application supports user authentication, role-based access control (RBAC), and CRUD operations for various entities like users, subjects, chapters, quizzes, and questions.
 
