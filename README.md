@@ -126,15 +126,6 @@ QuizMaster is a web-based application designed to manage quizzes, chapters, and 
 - Add more detailed logging and error handling.
 - Implement unit tests for both frontend and backend.
 
-ashishalrashid: add more details on raw and orm sql we have used ,and sqlite with consise rdbms 
-
-GitHub Copilot: # QuizMaster Project
-
-## Overview
-QuizMaster is a web-based application designed to manage quizzes, chapters, and subjects. It includes both a **frontend** built with Vue.js and a **backend** powered by Flask. The backend uses **SQLite** as the database and supports both **raw SQL** and **SQLAlchemy ORM** for database operations.
-
----
-
 ## Backend Details
 
 ### Database: SQLite
