@@ -27,3 +27,4 @@ dist-ssr
 #some ideas rough
 ideas/*
 __pycache__/
+.env
