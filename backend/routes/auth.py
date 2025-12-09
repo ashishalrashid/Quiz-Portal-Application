@@ -54,12 +54,24 @@ class Signup(Resource):
     @limiter.limit("100 per minute")
     def post(self):
         data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
-        email = data.get('email')
-        name = data.get('name')
-        qualification = data.get('qualification')
-        dob_str = data.get('dob')
+        username = (data or {}).get('username')
+        password = (data or {}).get('password')
+        email = (data or {}).get('email')
+        name = (data or {}).get('name')
+        qualification = (data or {}).get('qualification')
+        dob_str = (data or {}).get('dob')
+
+        # Required fields guardrails to avoid NULL constraint errors
+        missing = [field for field, val in {
+            "username": username,
+            "password": password,
+            "email": email,
+            "name": name,
+            "qualification": qualification,
+        }.items() if not val]
+        if missing:
+            return jsonify({"msg": f"Missing required fields: {', '.join(missing)}"}), 400
+
         dob = datetime.strptime(dob_str, "%Y-%m-%d").date() if dob_str else None
         user = User.query.filter_by(username=username).first()
         if user:

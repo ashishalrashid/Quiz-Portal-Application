@@ -1,241 +1,307 @@
 <template>
-    <div class="container">
-        <div class="admin-dashboard">
-            <RouterLink to="/admindash" class="icon">
-                <i class="fas fa-home"> Home</i>
-            </RouterLink>
-            <RouterLink to="/admindash/subjects" class="icon">
-                <i class="fas fa-book circular-icon"> Subjects</i>
-            </RouterLink>
-            <RouterLink to="/admindash/user" class="icon">
-                <i class="fas fa-user circular-icon"> Users</i>
-            </RouterLink>
-            <RouterLink to="/admindash/stats" class="icon">
-                <i class="fas fa-chart-bar"> Stats</i>
-            </RouterLink>
-            <a href="#" @click.prevent="logout" class="icon">
-                <i class="fas fa-sign-out-alt"> Log Out</i>
-            </a>
-        </div>
-        
-        <div class="subcontainer">
-            <div class="top">
-            <h2>Chapters</h2>
-            <button @click="goToCreateChapter" class="all-subjects">
-    <i class="fas fa-plus-circle"> Add Chapter</i>
-  </button>
+  <div class="page">
+    <aside class="sidebar" aria-label="Admin navigation">
+      <router-link to="/admindash" class="nav-item">
+        <i class="fas fa-home nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Home</span>
+      </router-link>
 
+      <router-link to="/admindash/subjects" class="nav-item">
+        <i class="fas fa-book nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Subjects</span>
+      </router-link>
+
+      <router-link to="/admindash/user" class="nav-item">
+        <i class="fas fa-user nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Users</span>
+      </router-link>
+
+      <router-link to="/admindash/stats" class="nav-item">
+        <i class="fas fa-chart-bar nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Stats</span>
+      </router-link>
+
+      <a href="#" @click.prevent="logout" class="nav-item logout" role="button">
+        <i class="fas fa-sign-out-alt nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Log Out</span>
+      </a>
+    </aside>
+
+    <main class="main">
+      <header class="main-header">
+        <h1 class="title">Chapters</h1>
+        <button class="btn-primary" @click="goToCreateChapter">
+          <i class="fas fa-plus-circle" aria-hidden="true"></i>
+          <span>Add Chapter</span>
+        </button>
+      </header>
+
+      <section class="cards">
+        <ul class="list" aria-live="polite">
+          <li
+            v-for="chapter in chapters"
+            :key="chapter.id"
+            class="card"
+            role="group"
+          >
+            <div
+              class="card-body"
+              @click="goToChapter(chapter.id)"
+              role="button"
+              tabindex="0"
+              @keyup.enter="goToChapter(chapter.id)"
+              :aria-label="`Open chapter ${chapter.name}`"
+            >
+              <h3 class="card-title">{{ chapter.name }}</h3>
+              <p class="card-desc">{{ chapter.description || 'No description' }}</p>
+            </div>
+
+            <div class="card-actions">
+              <button class="btn-ghost" @click.stop="goToEditChapter(chapter.id)">Edit</button>
+              <button class="btn-danger" @click.stop="deleteChapter(chapter.id)">Delete</button>
+            </div>
+          </li>
+        </ul>
+
+        <div v-if="!chapters || chapters.length === 0" class="empty">
+          No chapters available.
         </div>
-            <ul class="subs">
-                <li v-for="chapter in chapters" :key="chapter.id" class="sub_item">
-                    <div @click="goToChapter(chapter.id)">
-                        <h3 class="gwak">{{ chapter.name }}</h3>
-                        <p>{{ chapter.description }}</p>
-                    </div>
-                    <div class="action-buttons">
-                        <button @click="goToEditChapter(chapter.id)" class="but">Edit</button>
-                        <button @click="deleteChapter(chapter.id)" class="danger">Delete</button>
-                    </div>
-                </li>
-            </ul>
-        </div>
-    </div>
+      </section>
+    </main>
+  </div>
 </template>
 
 <script>
 export default {
-    name: "Chapters",
-    data() {
-        return {
-            chapters: []
-        };
+  name: "Chapters",
+  data() {
+    return {
+      chapters: []
+    };
+  },
+  created() {
+    this.fetchChapters();
+  },
+  methods: {
+    async fetchChapters() {
+      try {
+        const subjectId = this.$route.params.subject_id;
+        const response = await fetch(`http://localhost:5000/getchapter/${subjectId}`, {
+          headers: {
+            "Accept": "application/json",
+            "Authorization": "Bearer " + localStorage.getItem("token")
+          }
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch chapters");
+        }
+        const data = await response.json();
+        this.chapters = data.chapters;
+      } catch (error) {
+        console.error("Error fetching chapters:", error);
+      }
     },
-    created() {
+    logout() {
+      localStorage.removeItem("token");
+      this.$router.push("/login");
+    },
+    goToEditChapter(chapterId) {
+      this.$router.push(`/editchapter/${chapterId}`);
+    },
+    goToChapter(chapterId) {
+      this.$router.push(`/chapter/${chapterId}`);
+    },
+    async deleteChapter(chapterId) {
+      try {
+        const response = await fetch(`http://localhost:5000/deletechapter/${chapterId}`, {
+          method: "DELETE",
+          headers: {
+            "Accept": "application/json",
+            "Authorization": "Bearer " + localStorage.getItem("token")
+          }
+        });
+        if (!response.ok) {
+          throw new Error("Failed to delete chapter");
+        }
         this.fetchChapters();
+      } catch (error) {
+        console.error("Error deleting chapter:", error);
+      }
     },
-    methods: {
-        async fetchChapters() {
-            try {
-                const subjectId = this.$route.params.subject_id;
-                const response = await fetch(`http://localhost:5000/getchapter/${subjectId}`, {
-                    headers: {
-                        "Accept": "application/json",
-                        "Authorization": "Bearer " + localStorage.getItem("token")
-                    }
-                });
-                if (!response.ok) {
-                    throw new Error("Failed to fetch chapters");
-                }
-                const data = await response.json();
-                this.chapters = data.chapters;
-            } catch (error) {
-                console.error("Error fetching chapters:", error);
-            }
-        },
-        logout() {
-            localStorage.removeItem("token");
-            this.$router.push("/login");
-        },
-        goToEditChapter(chapterId) {
-            this.$router.push(`/editchapter/${chapterId}`);
-        },
-        goToChapter(chapterId) {
-            this.$router.push(`/chapter/${chapterId}`);
-        },
-        async deleteChapter(chapterId) {
-            try {
-                const response = await fetch(`http://localhost:5000/deletechapter/${chapterId}`, {
-                    method: "DELETE",
-                    headers: {
-                        "Accept": "application/json",
-                        "Authorization": "Bearer " + localStorage.getItem("token")
-                    }
-                });
-                if (!response.ok) {
-                    throw new Error("Failed to delete chapter");
-                }
-                this.fetchChapters();
-            } catch (error) {
-                console.error("Error deleting chapter:", error);
-            }
-        },
-        goToCreateChapter() {
-    const subjectId = this.$route.params.subject_id; 
-    if (subjectId) {
-        this.$router.push(`/createchapter/${subjectId}`); // Navigate
-    } else {
+    goToCreateChapter() {
+      const subjectId = this.$route.params.subject_id;
+      if (subjectId) {
+        this.$router.push(`/createchapter/${subjectId}`);
+      } else {
         console.error("Subject ID not found in URL params");
+      }
     }
-}
-    }
-}; 
+  }
+};
 </script>
 
-
-<style>
-html, body, #app {
-  margin: 0;
-  height: 100%;
-  width: 100%;
+<style scoped>
+:root{
+  --sidebar-bg: #1f2933;
+  --accent: #0f4c5c;
+  --card-bg: #ffffff;
+  --muted: #6b7280;
+  --danger: #d9534f;
+  --radius: 12px;
+  --gap: 16px;
+  --max-width: 1100px;
 }
 
-.container {
-    font-family: 'Times New Roman', Times, serif;
-    display: flex;
-    background-color: rgb(213, 213, 213);
-    height: 100vh;
-    width: 100%;
-}
+*{box-sizing:border-box}
 
-.admin-dashboard {
+.page {
   display: flex;
-  background-color: rgb(56, 56, 56);
-  flex-direction: column;
-  justify-content: center;
-  padding: 10px;
-  align-items: flex-start;
-  width: 250px;
+  min-height: 100vh;
+  background: linear-gradient(180deg,#f3f5f6,#e9ecef);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
+  color: #0b1220;
 }
-.icon {
-    display: flexbox;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 10px;
-    border-radius: 250px;
-    margin: 10px;
-    color: rgb(255, 255, 255);
-    width: 80%;
-    font-family: 'Times New Roman', Times, serif;
-}
-.icon:hover {
-  background-color: #000000;
-  transform: scale(1.1);
-}
-.disabled {
-    background-color: rgb(117, 116, 116);
-    padding: 10px;
-    border-radius: 250px;
-    margin: 10px;
-    width: 80%;
-    color: aliceblue;
-}
-.subcontainer {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    margin-left: 10%;
-    width: 100%;
-}
-.top {
-    display: flex;
-    align-items: center;
-}
-.subs {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    list-style: none;
-    height: 100%;
-    width: 100%;
-}
-.sub_item {
-  border: 1px solid #040404;
-  border-radius: 25px;
-  padding: 15px;
-  cursor: pointer;
-  margin: 10px;
-  width: 150px;
-  height: 250px;
+
+.sidebar {
+  width: 220px;
+  background: var(--sidebar-bg);
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  font-size: larger;
+  gap: 12px;
+  box-shadow: 2px 0 8px rgba(2,6,23,0.08);
+}
+
+.nav-item {
+  display: flex;
+  gap: 12px;
   align-items: center;
-}
-.sub_item:hover {
-  background-color: #ffffff;
-  transform: scale(1.05);
-}
-.gwak {
-    font-size: 40px;
-}
-.action-buttons {
-    margin-top: auto;
-    display: flex;
-    justify-content: space-around;
-}
-.danger {
-    background-color: red;
-    margin: 10px;
-    border: 1px;
-    border-radius: 25px;
-}
-.but {
-    background-color: #ffffff;
-    margin: 10px;
-    border: 1px;
-    border-radius: 25px;
-}
-.all-subjects {
+  color: #e6eef1;
   text-decoration: none;
-  color: #fff; 
-  background-color: #003f54; 
-  padding: 10px 15px;
-  border: none;
-  border-radius: 25px;
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  font-size: 1em;
-  margin: 50px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: background 120ms ease, transform 120ms ease;
 }
 
-.all-subjects i {
-  margin-left: 8px;
+.nav-item:hover { background: rgba(255,255,255,0.04); transform: translateY(-2px); }
+.nav-icon { width:28px; text-align:center; font-size:1.05rem; }
+.logout { margin-top: auto; background: rgba(255,255,255,0.02); }
+
+/* Main */
+.main {
+  flex: 1;
+  padding: 28px;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  width: calc(100% - 260px);
 }
-.all-subjects:hover {
-  background-color: #000000;
-  transform: scale(1.1);
+
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  gap: 12px;
+}
+
+.title { margin: 0; font-size: 1.4rem; }
+
+.btn-primary {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  background: linear-gradient(180deg,var(--accent), #083b45);
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.cards { display: block; }
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.card {
+  width: 220px;
+  background: var(--card-bg);
+  border-radius: 10px;
+  border: 1px solid #e6e9eb;
+  box-shadow: 0 8px 20px rgba(11,23,40,0.04);
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.card:hover { transform: translateY(-6px); box-shadow: 0 14px 36px rgba(11,23,40,0.08); }
+
+.card-body {
+  padding: 16px;
+  cursor: pointer;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
+.card-desc { color: var(--muted); font-size: 0.92rem; margin: 0; min-height: 48px; }
+
+.card-actions {
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  border-top: 1px solid #f1f4f6;
+  background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(15,76,92,0.08);
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.btn-ghost:hover { background: rgba(15,76,92,0.04); }
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.btn-danger:hover { filter: brightness(0.95); }
+
+.empty {
+  padding: 36px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* responsive */
+@media (max-width: 980px) {
+  .sidebar { display: none; }
+  .main { width: 100%; padding: 18px; }
+  .list { justify-content: center; }
 }
 </style>
