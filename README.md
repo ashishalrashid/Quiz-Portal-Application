@@ -1,201 +1,261 @@
-## Overview
-QuizMaster is a web-based application designed to manage quizzes, chapters, and subjects. It includes both a **frontend** built with Vue.js and a **backend** powered by Flask. The application supports user authentication, role-based access control (RBAC), and CRUD operations for various entities like users, subjects, chapters, quizzes, and questions.
+
+# QuizMaster Backend Documentation
+
+QuizMaster is a Flask-based backend that provides authentication, CRUD operations, statistics, Redis-backed rate limiting, and asynchronous email delivery using Celery. This README describes the backend architecture, environment configuration, endpoints, and how to run all services.
 
 ---
 
-## Frontend
+# Overview
 
-### Framework and Tools
-- **Vue.js**: The frontend is built using Vue 3.
-- **Vite**: Used for fast development and build processes.
-- **FontAwesome**: Provides icons for the UI.
+The backend exposes a REST API that handles:
 
-### Directory Structure
-- **`index.html`**: The entry point for the frontend.
-- **`src/`**: Contains the main application code.
-  - **`App.vue`**: The root Vue component.
-  - **`main.js`**: Initializes the Vue app and sets up routing.
-  - **`router/`**: Contains route definitions for navigation.
-  - **`views/`**: Includes all the main pages like admindash.vue, editsub.vue, addchap.vue, etc.
-  - **`components/`**: Reusable Vue components.
-  - **`assets/`**: Static assets like images and icons.
-  - **`style.css`**: Global styles for the application.
-- **`public/`**: Contains public assets like background images.
+- User and admin authentication (JWT)
+- CRUD operations for subjects, chapters, quizzes, questions, and users
+- User quiz interactions and performance statistics
+- Subject-level statistics
+- Rate limiting using Redis
+- Celery tasks for asynchronous operations, including emailing subject statistics
 
-### Features
-- **Admin Dashboard**: Manage users, subjects, chapters, and quizzes.
-- **User Dashboard**: View and take quizzes.
-- **Dynamic Routing**: Routes like `/admindash`, `/editsubject/:subject_id`, and `/quiz/:quiz_id` enable dynamic navigation.
-- **Charts**: Displays statistics using `chart.js`.
+SQLite is used as the default database, via SQLAlchemy and raw SQL for aggregations.
 
-### Setup
-1. Install dependencies:
-   ```sh
-   npm install
-   ```
-2. Start the development server:
-   ```sh
-   npm run dev
-   ```
-3. Build for production:
-   ```sh
-   npm run build
-   ```
+
 
 ---
 
-## Backend
+# Environment Variables (`backend/.env`)
 
-### Framework and Tools
-- **Flask**: The backend framework.
-- **Flask-RESTful**: For building RESTful APIs.
-- **Flask-JWT-Extended**: Handles authentication and authorization.
-- **Flask-Limiter**: Implements rate limiting.
-- **SQLite**: The database used for storing application data.
+The backend requires a `.env` file to configure Flask, Redis, Celery, and SMTP.
 
-### Directory Structure
-- **`app.py`**: The main backend application file.
-- **instance**: Contains the SQLite database file (`db.sqlite3`).
 
-### Features
-- **Authentication**:
-  - User login and signup.
-  - Admin login with role-based access control.
-- **CRUD Operations**:
-  - Manage users, subjects, chapters, quizzes, and questions.
-- **Statistics**:
-  - Fetch user performance and subject statistics.
-- **Rate Limiting**:
-  - Protects endpoints from abuse (e.g., 100 requests per minute).
-- **Protected Routes**:
-  - Secured with JWT tokens.
-- **Search**:
-  - Search functionality for users, subjects, quizzes, and questions.
+# Flask
 
-### API Endpoints
-- **Authentication**:
-  - `/login`: User login.
-  - `/signup`: User signup.
-  - `/adminlogin`: Admin login.
-- **Subjects**:
-  - `/createsubject`: Create a new subject.
-  - `/editsubject/<subject_id>`: Edit an existing subject.
-  - `/deletesubject/<subject_id>`: Delete a subject.
-  - `/getsubjects`: Fetch all subjects.
-- **Chapters**:
-  - `/createchapter/<subject_id>`: Create a chapter under a subject.
-  - `/editchapter/<chapter_id>`: Edit a chapter.
-  - `/deletechapter/<chapter_id>`: Delete a chapter.
-  - `/getchapter/<subject_id>`: Fetch chapters for a subject.
-- **Quizzes**:
-  - `/createquiz/<chapter_id>`: Create a quiz under a chapter.
-  - `/editquiz/<quiz_id>`: Edit a quiz.
-  - `/deletequiz/<quiz_id>`: Delete a quiz.
-  - `/getquiz/<chapter_id>`: Fetch quizzes for a chapter.
-- **Questions**:
-  - `/createquestion/<quiz_id>`: Add a question to a quiz.
-  - `/editquestion/<question_id>`: Edit a question.
-  - `/deletequestion/<question_id>`: Delete a question.
-  - `/getquestion/<quiz_id>`: Fetch questions for a quiz.
-- **Statistics**:
-  - `/getcounts`: Fetch counts of users, subjects, chapters, and quizzes.
-  - `/subjectstats`: Fetch statistics for subjects.
+SECRET_KEY=supersecretkey
+FLASK_ENV=development
+FLASK_DEBUG=1
 
-### Setup
-1. Install dependencies:
-   ```sh
-   pip install -r requirements.txt
-   ```
-2. Run the application:
-   ```sh
-   python app.py
-   ```
-3. The backend will be available at `http://localhost:5000`.
+# Database (SQLite default)
+
+DATABASE_URL=sqlite:///instance/db.sqlite3
+
+# Redis (Limiter + Celery Broker + Result Backend)
+
+REDIS_URL=redis://localhost:6379/0
+RATELIMIT_STORAGE_URL=redis://localhost:6379/2
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/1
+
+# SMTP for Celery Email Task
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=[your_email@gmail.com](mailto:your_email@gmail.com)
+SMTP_PASS=your_app_password
+FROM_EMAIL=[your_email@gmail.com](mailto:your_email@gmail.com)
+
+```
+
+Notes:
+
+- Gmail requires enabling 2FA and creating an App Password.
+- Mailtrap SMTP credentials may be used for development testing.
 
 ---
 
-## Notes
-- The frontend communicates with the backend via RESTful APIs.
-- Ensure the backend is running before using the frontend.
-- Use `http://localhost:5173` as the frontend origin for CORS configuration.
+# Redis Rate Limiting
+
+Flask-Limiter uses Redis as its storage backend.
+
+Configuration:
+
+```
+
+RATELIMIT_STORAGE_URL=redis://localhost:6379/2
+
+````
+
+Endpoints include decorators such as:
+
+```python
+@limiter.limit("100 per minute")
+````
+
+Redis stores rate-limit counters, enabling IP-based or user-based throttling.
 
 ---
 
-## Future Enhancements
-- Modularize the backend by moving models to a separate `models.py` file.
-- Add more detailed logging and error handling.
-- Implement unit tests for both frontend and backend.
+# Celery Integration
 
-## Backend Details
+Celery is configured in `celery_app.py` using Redis as both broker and result backend. A Celery worker must be running for asynchronous tasks.
 
-### Database: SQLite
-- **SQLite** is a lightweight, serverless RDBMS used for this project.
-- **Advantages**:
-  - Easy to set up and use.
-  - Ideal for small to medium-sized applications.
-  - No need for a separate database server.
-- **Limitations**:
-  - Not suitable for high-concurrency applications.
-  - Limited support for advanced features like stored procedures.
+The primary Celery task:
 
-### SQL Usage
-The backend uses a combination of **raw SQL** and **SQLAlchemy ORM** for database interactions.
+```
+tasks/subject_stats.py
+```
 
-#### SQLAlchemy ORM
-- **Object-Relational Mapping (ORM)** allows us to interact with the database using Python objects.
-- Example:
-  ```python
-  user = User.query.filter_by(email=email).first()
-  db.session.add(new_user)
-  db.session.commit()
-  ```
-- **Advantages**:
-  - Simplifies database operations.
-  - Reduces the need to write raw SQL queries.
-  - Automatically handles relationships and cascading deletes.
+This task:
 
-#### Raw SQL
-- **Raw SQL** is used for complex queries or when fine-grained control is needed.
-- Example:
-  ```python
-  sql = text("SELECT * FROM chapter WHERE subject_id = :subject_id")
-  chapters = db.session.execute(sql, {"subject_id": subject_id}).fetchall()
-  ```
-- **Advantages**:
-  - Provides flexibility for custom queries.
-  - Useful for performance optimization.
-- **Disadvantages**:
-  - Requires manual handling of SQL syntax and parameters.
-  - More prone to SQL injection if not handled carefully.
+1. Executes raw SQL to compute subject statistics.
+2. Generates a plain-text email body.
+3. Sends the email using SMTP credentials defined in `.env`.
+4. Supports retries and logs task failures.
 
-### Key Features of the Backend
-1. **Authentication**:
-   - JWT-based authentication for secure access.
-   - Admin and user roles with role-based access control (RBAC).
+Endpoints related to Celery:
 
-2. **CRUD Operations**:
-   - Comprehensive CRUD operations for users, subjects, chapters, quizzes, and questions.
-   - Example:
-     - ORM: `User.query.filter_by(username=username).first()`
-     - Raw SQL: `db.session.execute(text("DELETE FROM user WHERE id = :user_id"), {"user_id": user_id})`
-
-3. **Rate Limiting**:
-   - Protects endpoints from abuse using `Flask-Limiter`.
-
-4. **Statistics**:
-   - Fetch user performance and subject statistics using raw SQL for aggregation.
-
-5. **Relationships**:
-   - **One-to-Many**: Subjects to Chapters, Chapters to Quizzes.
-   - **Many-to-Many**: Users to Subjects (via `UserSubject`).
+```
+POST /email-subject-stats       # Enqueues the Celery task
+GET  /tasks/<task_id>           # Retrieves Celery task state and result
+```
 
 ---
 
-## Summary of SQL Usage
-- **SQLAlchemy ORM**: Used for standard CRUD operations and relationships.
-- **Raw SQL**: Used for:
-  - Complex queries (e.g., joins, aggregations).
-  - Performance-critical operations.
-  - Custom search functionality.
+# API Endpoints
 
-By combining ORM and raw SQL, the backend achieves both simplicity and flexibility, making it robust and efficient for managing the QuizMaster application.
+## Authentication
+
+```
+POST /login
+POST /signup
+POST /adminlogin
+```
+
+## Subjects
+
+```
+POST   /createsubject
+GET    /getsubjects
+PUT    /editsubject/<id>
+DELETE /deletesubject/<id>
+```
+
+## Chapters
+
+```
+POST   /createchapter/<subject_id>
+PUT    /editchapter/<chapter_id>
+DELETE /deletechapter/<chapter_id>
+GET    /getchapter/<subject_id>
+```
+
+## Quizzes
+
+```
+POST   /createquiz/<chapter_id>
+GET    /getquiz/<chapter_id>
+PUT    /editquiz/<quiz_id>
+DELETE /deletequiz/<quiz_id>
+```
+
+## Questions
+
+```
+POST   /createquestion/<quiz_id>
+GET    /getquestion/<quiz_id>
+PUT    /editquestion/<question_id>
+DELETE /deletequestion/<question_id>
+```
+
+## Statistics
+
+```
+GET /getcounts
+GET /subjectstats
+```
+
+## Celery Email Endpoints
+
+```
+POST /email-subject-stats       # Body: { "email": "example@mail.com" }
+GET  /tasks/<task_id>
+```
+
+---
+
+# Running the Backend
+
+## Install Dependencies
+
+```
+cd backend
+pip install -r requirements.txt
+```
+
+## Start Redis
+
+```
+redis-server
+```
+
+## Run Flask Server
+
+```
+python main.py
+```
+
+## Run Celery Worker
+
+```
+cd backend
+celery -A celery_app.celery worker --loglevel=info
+```
+
+(Optional) Celery Beat (if scheduled tasks are introduced):
+
+```
+celery -A celery_app.celery beat --loglevel=info
+```
+
+---
+
+# Manual Email Test
+
+```
+import os, smtplib
+from dotenv import load_dotenv
+
+load_dotenv()
+
+s = smtplib.SMTP(os.getenv("SMTP_HOST"), int(os.getenv("SMTP_PORT")))
+s.starttls()
+s.login(os.getenv("SMTP_USER"), os.getenv("SMTP_PASS"))
+s.sendmail(os.getenv("FROM_EMAIL"), "target@example.com", "Subject: Test\n\nHello")
+s.quit()
+```
+
+---
+
+# Database Notes
+
+* SQLite database stored in `backend/instance/db.sqlite3`
+* SQLAlchemy ORM used for standard CRUD operations
+* Raw SQL used for aggregated statistics queries such as `/subjectstats`
+
+Example aggregation query:
+
+```
+SELECT s.id, s.name,
+       (SELECT COUNT(*) FROM usersubject WHERE subject_id = s.id) AS user_count,
+       (SELECT AVG(sc.score)
+        FROM quiz q
+        JOIN chapter c ON q.chapter_id = c.id
+        JOIN scores sc ON sc.quiz_id = q.id
+        WHERE c.subject_id = s.id
+       ) AS avg_score
+FROM subject s;
+```
+
+---
+
+# Summary
+
+The QuizMaster backend includes:
+
+* Flask REST API
+* JWT authentication
+* Redis-backed rate limiting
+* Celery for asynchronous email tasks
+* SQLite database with ORM and raw SQL
+* Full endpoint suite for managing quizzes, users, subjects, and chapters
+* Async statistics email via `/email-subject-stats`
+
+
