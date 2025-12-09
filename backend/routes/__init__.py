@@ -14,6 +14,8 @@ from .user import (
 )
 from .stats import GetCounts, SubjectStats
 
+from .email_stats import EmailSubjectStats, TaskStatus
+
 def register_resources(api):
     """Register all API resources"""
     api.add_resource(ProtectedRoute, "/protected")
@@ -72,3 +74,7 @@ def register_resources(api):
     # Stats routes
     api.add_resource(GetCounts, "/getcounts")
     api.add_resource(SubjectStats, "/subjectstats")
+
+    # Email stats
+    api.add_resource(EmailSubjectStats, "/email-subject-stats")
+    api.add_resource(TaskStatus, "/tasks/<string:task_id>")
