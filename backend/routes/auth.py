@@ -2,14 +2,11 @@ from datetime import datetime
 from flask import Flask, request, jsonify, make_response
 from flask_cors import cross_origin
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_restful import Resource
 from werkzeug.security import check_password_hash
 
 from models import Admin, User, db
-
-limiter = Limiter(get_remote_address, default_limits=["2000 per day", "500 per hour"])
+from extensions import limiter
 
 class ProtectedRoute(Resource):
     @jwt_required()

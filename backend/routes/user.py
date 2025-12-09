@@ -3,15 +3,12 @@ from datetime import date, datetime
 from flask import request, jsonify
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_restful import Resource
 from sqlalchemy import text
 
 from models import db
 from cache import cache_get_json, cache_set_json
-
-limiter = Limiter(get_remote_address, default_limits=["2000 per day", "500 per hour"])
+from extensions import limiter
 
 
 class GetUserSubjects(Resource):

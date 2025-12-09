@@ -3,14 +3,11 @@ from datetime import timedelta
 
 from flask import Flask, jsonify
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_restful import Api
 
-from models import db
 from cache import init_cache
 from config import Config
+from extensions import db, jwt, limiter
 from routes import register_resources
 
 
@@ -30,16 +27,13 @@ def create_app():
     CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
 
     # Load configuration
-    app.config.from_mapping({
-        **vars(Config),
-        "SQLALCHEMY_DATABASE_URI": Config.get_db_uri(app.instance_path),
-        "JWT_ACCESS_TOKEN_EXPIRES": Config.JWT_ACCESS_TOKEN_EXPIRES,
-    })
+    app.config.from_object(Config)
+    app.config["SQLALCHEMY_DATABASE_URI"] = Config.get_db_uri(app.instance_path)
 
     # Initialize extensions
     db.init_app(app)
-    JWTManager(app)
-    Limiter(app, key_func=get_remote_address, default_limits=["2000 per day", "500 per hour"])
+    jwt.init_app(app)
+    limiter.init_app(app)
     init_cache(app)
 
     # Create database tables
@@ -49,9 +43,6 @@ def create_app():
     # Initialize API and register routes
     api = Api(app)
     register_resources(api)
-
-    # JWT error handler
-    jwt = JWTManager(app)
 
     @jwt.invalid_token_loader
     def invalid_token_callback(error_string):

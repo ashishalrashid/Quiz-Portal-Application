@@ -1,14 +1,11 @@
 from flask import jsonify
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_restful import Resource
 from sqlalchemy import text
 
 from models import db
-
-limiter = Limiter(get_remote_address, default_limits=["2000 per day", "500 per hour"])
+from extensions import limiter
 
 
 class GetCounts(Resource):
