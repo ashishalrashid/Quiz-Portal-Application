@@ -1,32 +1,61 @@
 <template>
-  <div class="container">
-    <div class="user-dashboard">
-      <RouterLink to="/userdash" class="disabled">
-        <i class="fas fa-home"> Home</i>
-      </RouterLink>
-      <RouterLink to="/uallsubjects" class="icon">
-        <i class="fas fa-book circular-icon"> All Subjects</i>
-      </RouterLink>
-      <RouterLink to="/yourperformance" class="icon">
-        <i class="fas fa-chart-bar"> Your  Performance</i>
-      </RouterLink>
-      <a href="#" @click.prevent="logout" class="icon">
-        <i class="fas fa-sign-out-alt"> Log Out</i>
+  <div class="page">
+    <aside class="sidebar" aria-label="User navigation">
+      <router-link to="/userdash" class="nav-item disabled" title="Home">
+        <i class="fas fa-home nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Home</span>
+      </router-link>
+
+      <router-link to="/uallsubjects" class="nav-item" title="All Subjects">
+        <i class="fas fa-book nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">All Subjects</span>
+      </router-link>
+
+      <router-link to="/yourperformance" class="nav-item" title="Your Performance">
+        <i class="fas fa-chart-bar nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Your Performance</span>
+      </router-link>
+
+      <a href="#" @click.prevent="logout" class="nav-item logout" role="button" title="Log out">
+        <i class="fas fa-sign-out-alt nav-icon" aria-hidden="true"></i>
+        <span class="nav-label">Log Out</span>
       </a>
-    </div>
-    <div class="subcontainer">
-      <ul class="subs">
-        <li 
-          v-for="subject in subjects" 
-          :key="subject.id" 
-          class="sub_item"
-          @click="goToSubject(subject.id)"
-        >
-          <h3 class="gwak">{{ subject.name }}</h3>
-          <p>{{ subject.description }}</p>
-        </li>
-      </ul>
-    </div>
+    </aside>
+
+    <main class="main" role="main">
+      <header class="hero">
+        <h1 class="hero-title">Your Subjects</h1>
+        <p class="hero-sub">Quick access to subjects you're enrolled in</p>
+      </header>
+
+      <section class="grid" aria-live="polite">
+        <ul class="list" v-if="subjects && subjects.length">
+          <li
+            v-for="subject in subjects"
+            :key="subject.id"
+            class="card"
+            @click="goToSubject(subject.id)"
+            role="button"
+            tabindex="0"
+            @keyup.enter="goToSubject(subject.id)"
+            :aria-label="`Open subject ${subject.name}`"
+          >
+            <div class="card-body">
+              <h3 class="card-title">{{ subject.name }}</h3>
+              <p class="card-desc">{{ subject.description || 'No description' }}</p>
+            </div>
+            <div class="card-meta">
+              <span class="chip">Chapters: {{ subject.chapter_count ?? '—' }}</span>
+              <span class="chip">Quizzes: {{ subject.quiz_count ?? '—' }}</span>
+            </div>
+          </li>
+        </ul>
+
+        <div v-else class="empty">
+          No subjects available.
+        </div>
+      </section>
+    </main>
   </div>
 </template>
 
@@ -68,94 +97,138 @@ export default {
 };
 </script>
 
-<style>
-html, body, #app {
-  margin: 0;
-  width: 100%;
+<style scoped>
+:root{
+  --sidebar-bg:#0f1724;
+  --accent:#0f4c5c;
+  --muted:#6b7280;
+  --card-bg:#ffffff;
+  --radius:12px;
+  --gap:16px;
+  --max-width:1100px;
 }
 
-.container {
-  font-family: 'Times New Roman', Times, serif;
-  display: flex;
-  background-color: rgb(213, 213, 213);
-  width: 100%;
+*{box-sizing:border-box}
+
+.page{
+  display:flex;
+  min-height:100vh;
+  background:linear-gradient(180deg,#f3f5f6,#e9ecef);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
+  color:#0b1220;
 }
 
-.user-dashboard {
-  display: flex;
-  background-color: rgb(56, 56, 56);
-  flex-direction: column;
-  justify-content: center;
-  padding: 10px;
-  align-items: flex-start;
-  width: 400px !important;
+.sidebar{
+  width:220px;
+  background:var(--sidebar-bg);
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  box-shadow:2px 0 8px rgba(2,6,23,0.08);
 }
 
-.icon {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 10px;
-  border-radius: 250px;
-  margin: 10px;
-  color: rgb(255, 255, 255);
-  width: 80%;
-  font-family: 'Times New Roman', Times, serif;
+.nav-item{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  color:#e6eef1;
+  text-decoration:none;
+  padding:10px 12px;
+  border-radius:10px;
+  font-weight:600;
+  transition:background 120ms ease, transform 120ms ease;
 }
 
-.icon:hover {
-  background-color: #000000;
-  transform: scale(1.1);
+.nav-item:hover{ background:rgba(255,255,255,0.04); transform:translateY(-2px); }
+.nav-icon{ width:28px; text-align:center; font-size:1.05rem; }
+.disabled{ background:rgba(255,255,255,0.03); cursor:default; }
+.logout{ margin-top:auto; background:rgba(255,255,255,0.02); }
+
+.main{
+  flex:1;
+  padding:28px;
+  max-width:var(--max-width);
+  margin:0 auto;
+  width:calc(100% - 260px);
 }
 
-.disabled {
-  background-color: rgb(117, 116, 116);
-  padding: 10px;
-  border-radius: 250px;
-  margin: 10px;
-  width: 80%;
-  color: aliceblue;
+.hero{
+  margin-bottom:18px;
 }
 
-.subcontainer {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  margin-left: 10%;
-  overflow-y: auto;
-  width: 80%;
+.hero-title{
+  margin:0;
+  font-size:1.4rem;
+  font-weight:700;
 }
 
-.subs {
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  padding: 0;
+.hero-sub{
+  margin:6px 0 0 0;
+  color:var(--muted);
+  font-size:0.95rem;
 }
 
-.sub_item {
-  border: 1px solid #040404;
-  border-radius: 25px;
-  padding: 15px;
-  cursor: pointer;
-  margin: 10px;
-  width: 40%;
-  transition: transform 0.3s;
+.grid{ display:block; }
+
+.list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:16px;
+  list-style:none;
+  padding:0;
+  margin:0;
 }
 
-.sub_item:hover {
-  background-color: #ffffff;
-  transform: scale(1.05);
+.card{
+  width:320px;
+  background:var(--card-bg);
+  border-radius:10px;
+  border:1px solid #e6e9eb;
+  box-shadow:0 8px 20px rgba(11,23,40,0.04);
+  display:flex;
+  flex-direction:column;
+  cursor:pointer;
+  transition:transform 120ms ease, box-shadow 120ms ease;
 }
 
-.gwak {
-  font-size: 24px;
-  margin: 0 0 10px;
+.card:hover{ transform:translateY(-6px); box-shadow:0 14px 36px rgba(11,23,40,0.08); }
+
+.card-body{
+  padding:18px;
+  flex:1;
 }
 
-.sub_item p {
-  margin: 0;
-  font-size: 16px;
-  color: #333;
+.card-title{ font-size:1.1rem; font-weight:700; margin:0 0 8px 0; }
+.card-desc{ color:var(--muted); margin:0; min-height:48px; }
+
+.card-meta{
+  display:flex;
+  gap:8px;
+  padding:12px 16px;
+  border-top:1px solid #f1f4f6;
+  align-items:center;
+}
+
+.chip{
+  background:#f3f4f6;
+  color:#0b1220;
+  padding:6px 10px;
+  border-radius:999px;
+  font-weight:600;
+  font-size:0.85rem;
+}
+
+.empty{
+  padding:40px;
+  color:var(--muted);
+  text-align:center;
+}
+
+@media (max-width:980px){
+  .sidebar{ display:none; }
+  .main{ width:100%; padding:18px; }
+  .list{ justify-content:center; }
+  .card{ width:100%; max-width:520px; }
 }
 </style>
