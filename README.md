@@ -261,14 +261,6 @@ celery -A celery_app.celery beat --loglevel=info
 
 ---
 
-# Security Notes
-
-* `.env` must not be committed to version control
-* Use Mailtrap or a disposable email account in development
-* Production systems should use a reliable email provider such as SendGrid or Mailgun
-* Rate limiting and authentication should remain enabled in all deployments
-
----
 
 If you want, I can also produce:
 
