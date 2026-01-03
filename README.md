@@ -243,11 +243,7 @@ python main.py
 celery -A celery_app.celery worker --loglevel=info
 ```
 
-Optional Celery Beat:
 
-```bash
-celery -A celery_app.celery beat --loglevel=info
-```
 
 ---
 
@@ -261,9 +257,3 @@ celery -A celery_app.celery beat --loglevel=info
 
 ---
 
-
-If you want, I can also produce:
-
-* A minimal README
-* A polished enterprise-style README
-* A README with diagrams (architecture, request flow, Celery pipeline)
